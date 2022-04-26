@@ -1,8 +1,8 @@
 import Koa from 'koa';
 import './config/env';
 import router from './routes';
-const cors = require('koa2-cors');
-const bodyParser = require('koa-body-parser');
+import cors from 'koa2-cors';
+import bodyParser from 'koa-body-parser';
 
 const app = new Koa();
 const port = process.env.SERVER_PORT || 3000;
