@@ -22,7 +22,10 @@
     "koa2-cors": "^2.0.6",
     "lodash": "^4.17.21",
     "log4js": "^6.4.5",
+    "mysql": "^2.18.1",
+    "mysql2": "^2.3.3",
     "opensea-js": "^3.0.4",
+    "sequelize": "^6.19.0",
     "web3": "^1.7.3"
   },
   "devDependencies": {
