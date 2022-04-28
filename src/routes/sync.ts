@@ -1,40 +1,212 @@
 import Router from 'koa-router'
-
+import axios from 'axios'
+import _ from 'underscore'
+import { Trait, Token } from '../model/model'
+import { OpenSeaPort, Network } from 'opensea-js'
 const router = new Router({})
 
 const ethers = require('ethers');
 import genericErc721Abi from "../abis/ERC721.json";
-import collection from '../entity/collection';
+import Collection from '../entity/collection';
+
 
 const provider = new ethers.providers.JsonRpcProvider("https://eth-mainnet.alchemyapi.io/v2/nFvCkBjYskYZdpdXO1bnNW1epn6Muz7G");
 
+const seaport = new OpenSeaPort(provider, {
+  networkName: Network.Main,
+  apiKey: "a680542f053b4de3a9a99e945936b8c7"
+})
+
+const chunk = 100;
+
 const downloadMetadata = async (contract_address) => {
-  const contract = new ethers.Contract(contract_address, genericErc721Abi, provider);
-  const name = await contract.name();
-  const totalSupply = parseInt((await contract.totalSupply()).toString());
-
-  let firstTokenIndex = 0;
-  let tokenURI = "";
   try {
-    tokenURI = await contract.tokenURI(firstTokenIndex);
+    const opensea_res = await seaport.api.getAsset({
+      tokenAddress: contract_address,
+      tokenId: null
+    });
+    const contract = new ethers.Contract(contract_address, genericErc721Abi, provider);
+    const totalSupply = parseInt((await contract.totalSupply()).toString());
+    let firstTokenIndex = 0;
+    let tokenURI = "";
+    try {
+      tokenURI = await contract.tokenURI(firstTokenIndex);
+    } catch (err) {
+      firstTokenIndex = 1;
+      tokenURI = await contract.tokenURI(firstTokenIndex);
+    }
+    const tokenURIPattern = tokenURI.replace(firstTokenIndex.toString(), "{}");
+
+    const tokenIds = [...Array(totalSupply).keys()].map(i => i + firstTokenIndex);
+
+    let metadatas = [];
+    let startTime = new Date().getTime()
+    for (let i = 0, j = tokenIds.length; i < j; i += chunk) {
+      let chunkStartTime = new Date().getTime()
+      console.log("start: ", i, "/end: ", i + chunk - 1, "/all:", j);
+      const temporaryJobs = tokenIds.slice(i, i + chunk).map(tokenId => {
+        return getAttr(tokenURIPattern, tokenId)
+      });
+      let res = await download(temporaryJobs);
+      metadatas = metadatas.concat(res);
+      console.log(`res of ${i} to ${i + chunk - 1} takes ${new Date().getTime() - chunkStartTime} ms`, 'len', res.length)
+    }
+    console.log('work finished, takes ms', new Date().getTime() - startTime)
+
+    const traits = calcTraits(metadatas);
+    const tokens = getTokens(metadatas, traits);
+
+    Collection.build({
+      slug: opensea_res.collection.slug,
+      name: opensea_res.collection.name,
+      description: opensea_res.collection.description,
+      contract_address: contract_address,
+      chain: "ETH",
+      total_supply: totalSupply,
+      current_supply: totalSupply,
+      total_revealed: totalSupply,
+      image_url: opensea_res.collection.imageUrl,
+      tokens: JSON.stringify(tokens),
+      traits: JSON.stringify(traits)
+    }).save();
   } catch (err) {
-    firstTokenIndex = 1;
-    tokenURI = await contract.tokenURI(firstTokenIndex);
+    console.log(err);
   }
-  console.log(tokenURI)
-  const tokenURIPattern = tokenURI.replace(firstTokenIndex.toString(), "{}");
 
-
-  console.log(tokenURIPattern);
-
-  const res = await collection.findAll();
-  console.log(res);
 
 };
 
+const getAttr = async (tokenURIPattern, tokenId) => {
+  try {
+    const metajson = await axios.get(tokenURIPattern.replace("{}", tokenId, { timeout: 3000 }));
+    if (!metajson || !metajson.data) {
+      console.log('empty resp in getAttr, try again, tokenId=', tokenId)
+      return await getAttr(tokenURIPattern, tokenId)
+    }
+    return { id: tokenId, attributes: metajson.data.attributes, image: metajson.data.image }
+  }
+  catch (x) {
+    console.log('error in getAttr, tokenId=', tokenId, x.message)
+    return await getAttr(tokenURIPattern, tokenId)
+  }
+}
+
+const download = async (jobs) => {
+  try {
+    let attrResult = await axios.all(jobs)
+    const res = _.compact(attrResult)
+    return res;
+  } catch (error) {
+    console.log('error in download', error.message)
+    return await download(jobs);
+  }
+}
+
+
+let calcTraits = function (metadatas): Trait[] {
+  let traits = {};
+  let traitCounts = {};
+  let traitValues = {};
+  for (let i = 0; i < metadatas.length; i++) {
+    const token = metadatas[i];
+    const { attributes } = token;
+    if (attributes.length in traitCounts) {
+      traitCounts[attributes.length] += 1;
+    } else {
+      traitCounts[attributes.length] = 1;
+    }
+
+    attributes.forEach((trait: { value: string; trait_type: string; }) => {
+      if (!trait.value) { return; }
+      if (traits[trait.trait_type]) {
+        if (!traits[trait.trait_type][trait.value]) {
+          traits[trait.trait_type][trait.value] = 0;
+        }
+      } else {
+        traits[trait.trait_type] = {}
+        traits[trait.trait_type][trait.value] = 0;
+      }
+      if (trait.trait_type + "|" + trait.value in traitValues) {
+        traitValues[trait.trait_type + "|" + trait.value] += 1;
+      } else {
+        traitValues[trait.trait_type + "|" + trait.value] = 1;
+      }
+    });
+  }
+
+  for (let trait in traits) {
+    let noneCount = metadatas.length;
+    for (let value in traits[trait]) {
+      noneCount -= traitValues[trait + "|" + value];
+      traits[trait][value] = traitValues[trait + "|" + value]
+    }
+    if (noneCount > 0) {
+      traits[trait]["None"] = noneCount;
+    }
+  }
+  traits["Traits count"] = {}
+  for (let traitCount in traitCounts) {
+    traits["Traits count"][traitCount] = traitCounts[traitCount];
+  }
+
+  let items: Trait[] = [];
+  for (let trait in traits) {
+    for (let value in traits[trait]) {
+      let score = parseFloat((metadatas.length / Object.keys(traits[trait]).length / traits[trait][value]).toFixed(2));
+      let item: Trait = { type: trait, value: value, occurrences: traits[trait][value], percentage: parseFloat((traits[trait][value] / metadatas.length * 100).toFixed(2)), score: score };
+      items.push(item);
+    }
+  }
+  return items;
+}
+
+
+let getTokens = function (metadatas, traits): Token[] {
+  const traitsMap = _.groupBy(traits, function (item) {
+    return item.type + "|" + item.value;
+  });
+
+  const traitsCategories = _.groupBy(traits, function (item) {
+    return item.type;
+  });
+
+  let tokens: Token[] = [];
+  for (let i = 0; i < metadatas.length; i++) {
+    const token = metadatas[i];
+    const { id, image, attributes } = token;
+    let score = traitsMap["Traits count|" + attributes.length][0].score;
+
+    let leftCategories = Object.keys(traitsCategories);
+    leftCategories.splice(leftCategories.indexOf("Traits count"), 1);
+
+    let traits: Trait[] = [];
+    attributes.forEach((trait: { value: string; trait_type: string; }) => {
+      if (!trait.value) { return; }
+      score = score.valueOf() + traitsMap[trait.trait_type + "|" + trait.value][0].score.valueOf();
+      traits.push(traitsMap[trait.trait_type + "|" + trait.value][0]);
+      leftCategories.splice(leftCategories.indexOf(trait.trait_type), 1);
+    });
+    if (leftCategories.length > 0) {
+      for (let category in leftCategories) {
+        score = score.valueOf() + traitsMap[leftCategories[category] + "|" + "None"][0].score.valueOf();
+        traits.push(traitsMap[leftCategories[category] + "|" + "None"][0]);
+      }
+    }
+
+    traits.push(traitsMap["Traits count|" + attributes.length][0]);
+    let item: Token = { token_id: id, image: image, score: parseFloat(score.toFixed(2)), rank: 0, traits: traits };
+    tokens.push(item);
+  }
+
+  const tokenIdsSorted = Object.keys(tokens).sort(function (a, b) { return tokens[b].score - tokens[a].score });
+  for (let index in tokens) {
+    tokens[index].rank = tokenIdsSorted.indexOf(tokens[index].token_id.toString()) + 1;
+  }
+  return tokens;
+}
 
 router.get('/', async (ctx) => {
-  downloadMetadata("0xc599f72644140fe4d00ef9574100f636a30d923d");
+  downloadMetadata("0x1a92f7381b9f03921564a437210bb9396471050c");
   ctx.body = "OK";
 });
 

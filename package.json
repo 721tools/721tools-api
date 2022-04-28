@@ -26,6 +26,7 @@
     "mysql2": "^2.3.3",
     "opensea-js": "^3.0.4",
     "sequelize": "^6.19.0",
+    "underscore": "^1.13.3",
     "web3": "^1.7.3"
   },
   "devDependencies": {

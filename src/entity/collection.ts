@@ -1,16 +1,20 @@
 const Sequelize = require('sequelize');
 import sequelize from "../db";
 
-const collection = sequelize.define("collection", {
+const Collection = sequelize.define("collection", {
     id: {
         type: Sequelize.INTEGER,
         autoIncrement: true,
         primaryKey: true
     },
-    name: {
+    slug: {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true
+    },
+    name: {
+        type: Sequelize.STRING,
+        allowNull: false
     },
     description: {
         type: Sequelize.STRING,
@@ -37,11 +41,7 @@ const collection = sequelize.define("collection", {
         type: Sequelize.INTEGER,
         allowNull: false,
     },
-    banner_image_url: {
-        type: Sequelize.STRING,
-        allowNull: false,
-    },
-    not_revealed_image: {
+    image_url: {
         type: Sequelize.STRING,
         allowNull: false,
     },
@@ -60,4 +60,4 @@ const collection = sequelize.define("collection", {
     freezeTableName: true
 });
 
-export default collection;
+export default Collection;
