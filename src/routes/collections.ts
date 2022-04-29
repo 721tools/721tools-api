@@ -76,4 +76,61 @@ router.get('/', async (ctx) => {
   }
 });
 
+router.get('/:slug', async (ctx) => {
+  if (!ctx.params.slug) {
+    ctx.status = 404;
+    return;
+  }
+  const collection = await Collection.findOne({
+    where: { slug: ctx.params.slug },
+  });
+  if (!collection) {
+    ctx.status = 404;
+    return;
+  }
+  ctx.body = {
+    slug: collection.slug,
+    name: collection.name,
+    description: collection.description,
+    chain: collection.chain,
+    contract_address: collection.contract_address,
+    image_url: collection.image_url,
+    total_supply: collection.total_supply,
+    current_supply: collection.current_supply,
+    total_revealed: collection.total_revealed
+  };
+});
+
+router.get('/:slug/traits', async (ctx) => {
+  if (!ctx.params.slug) {
+    ctx.status = 404;
+    return;
+  }
+  const collection = await Collection.findOne({
+    where: { slug: ctx.params.slug },
+    attributes: { exclude: ['tokens'] }
+  });
+  if (!collection) {
+    ctx.status = 404;
+    return;
+  }
+  ctx.body = collection.traits;
+});
+
+router.get('/:slug/tokens', async (ctx) => {
+  if (!ctx.params.slug) {
+    ctx.status = 404;
+    return;
+  }
+  const collection = await Collection.findOne({
+    where: { slug: ctx.params.slug },
+    attributes: { exclude: ['traits'] }
+  });
+  if (!collection) {
+    ctx.status = 404;
+    return;
+  }
+  ctx.body = collection.tokens;
+});
+
 export default router;
