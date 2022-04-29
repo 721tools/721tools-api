@@ -10,8 +10,8 @@ CREATE TABLE `collection` (
   `total_revealed` int NOT NULL DEFAULT 0,
   `banner_image_url` varchar(256) NOT NULL DEFAULT '',
   `image_url` varchar(256) NOT NULL DEFAULT '',
-  `tokens`  mediumtext NOT NULL,
-  `traits`  text NOT NULL,
+  `tokens`  longtext NOT NULL,
+  `traits`  mediumtext NOT NULL,
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

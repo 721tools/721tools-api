@@ -2,7 +2,6 @@ import Router from 'koa-router'
 import axios from 'axios'
 import _ from 'underscore'
 import { Trait, Token } from '../model/model'
-import { OpenSeaPort, Network } from 'opensea-js'
 const router = new Router({})
 
 const ethers = require('ethers');
@@ -12,19 +11,16 @@ import Collection from '../entity/collection';
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.ETH_RPC_URL);
 
-const seaport = new OpenSeaPort(provider, {
-  networkName: Network.Main,
-  apiKey: process.env.ETH_API_KEY
-})
-
 const chunk = 100;
 
 const downloadMetadata = async (contract_address) => {
   try {
-    const opensea_res = await seaport.api.getAsset({
-      tokenAddress: contract_address,
-      tokenId: null
+    const collectionRes = await axios.get(`https://api.opensea.io/api/v1/asset_contract/${contract_address}`, {
+      headers: {
+        "X-API-KEY": process.env.ETH_API_KEY
+      }
     });
+    const collection = collectionRes.data.collection;
     const contract = new ethers.Contract(contract_address, genericErc721Abi, provider);
     const totalSupply = parseInt((await contract.totalSupply()).toString());
     let firstTokenIndex = 0;
@@ -41,46 +37,56 @@ const downloadMetadata = async (contract_address) => {
 
     let metadatas = [];
     let startTime = new Date().getTime()
+    let total_revealed = totalSupply;
     for (let i = 0, j = tokenIds.length; i < j; i += chunk) {
       let chunkStartTime = new Date().getTime()
       console.log("start: ", i, "/end: ", i + chunk - 1, "/all:", j);
       const temporaryJobs = tokenIds.slice(i, i + chunk).map(tokenId => {
         return getAttr(tokenURIPattern, tokenId)
       });
-      let res = await download(temporaryJobs);
-      metadatas = metadatas.concat(res);
+      const res = await download(temporaryJobs);
+      const filtedRes = res.filter(item => {
+        return !(!item.attributes || item.attributes.length == 0)
+      });
+      metadatas = metadatas.concat(filtedRes);
       console.log(`res of ${i} to ${i + chunk - 1} takes ${new Date().getTime() - chunkStartTime} ms`, 'len', res.length)
+      if (filtedRes.length < res.length) {
+        total_revealed = metadatas.length;
+        break;
+      }
     }
     console.log('work finished, takes ms', new Date().getTime() - startTime)
 
     const traits = calcTraits(metadatas);
     const tokens = getTokens(metadatas, traits);
     if (await Collection.count({
-      contract_address: contract_address
+      where: {
+        contract_address: contract_address
+      }
     }) > 0) {
       Collection.update({
-        slug: opensea_res.collection.slug,
-        name: opensea_res.collection.name,
-        description: opensea_res.collection.description,
+        slug: collection.slug,
+        name: collection.name,
+        description: collection.description,
         chain: "ETH",
         total_supply: totalSupply,
         current_supply: totalSupply,
-        total_revealed: totalSupply,
-        image_url: opensea_res.collection.imageUrl,
+        total_revealed: total_revealed,
+        image_url: collection.image_url,
         tokens: JSON.stringify(tokens),
         traits: JSON.stringify(traits)
       }, { where: { contract_address: contract_address } });
     } else {
       Collection.build({
-        slug: opensea_res.collection.slug,
-        name: opensea_res.collection.name,
-        description: opensea_res.collection.description,
+        slug: collection.slug,
+        name: collection.name,
+        description: collection.description,
         contract_address: contract_address,
         chain: "ETH",
         total_supply: totalSupply,
         current_supply: totalSupply,
         total_revealed: totalSupply,
-        image_url: opensea_res.collection.imageUrl,
+        image_url: collection.image_url,
         tokens: JSON.stringify(tokens),
         traits: JSON.stringify(traits)
       }).save();
