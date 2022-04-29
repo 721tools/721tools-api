@@ -1,7 +1,11 @@
 import Router from 'koa-router'
 import * as _ from 'lodash'
-import { Trait, Token } from '../model/model'
 import Collection from '../entity/collection';
+import { OpenSeaPort, Network } from 'opensea-js'
+import HDWalletProvider from '@truffle/hdwallet-provider'
+import ethers from 'ethers'
+import { Token } from '../model/model'
+
 const Sequelize = require('sequelize');
 
 const router = new Router();
@@ -225,6 +229,51 @@ router.get('/:slug/tokens', async (ctx) => {
     supply: allTokens.length,
     tokens: filtedTokens.slice((page.valueOf() - 1) * limit.valueOf(), page.valueOf() * limit.valueOf())
   }
+});
+
+
+router.post('/:slug/bid', async (ctx, next) => {
+  if (!ctx.params.slug) {
+    ctx.status = 404;
+    return;
+  }
+  const collection = await Collection.findOne({
+    where: { slug: ctx.params.slug },
+  });
+  if (!collection) {
+    ctx.status = 404;
+    return;
+  }
+  const provider = new HDWalletProvider(ctx.request.body.privite_key, "https://eth-mainnet.alchemyapi.io/v2/nFvCkBjYskYZdpdXO1bnNW1epn6Muz7G");
+  const wallet = new ethers.Wallet(ctx.request.body.privite_key);
+  const seaport = new OpenSeaPort(provider, {
+    networkName: Network.Main,
+    apiKey: "a680542f053b4de3a9a99e945936b8c7"
+  })
+  const token_ids = ctx.request.body.token_ids;
+  const token_address = "0xd532b88607b1877fe20c181cba2550e3bbd6b31c";
+  if (token_ids && token_ids.length > 0) {
+    // @todo save it to db and to it async
+    for (let index in token_ids) {
+      seaport.createBuyOrder({
+        asset: {
+          tokenAddress: token_address,
+          tokenId: token_ids[index]
+        },
+        accountAddress: wallet.address,
+        startAmount: ctx.request.body.bid_price,
+        expirationTime: ctx.request.body.bid_expiry
+      }).catch((err) => {
+        console.log(`${wallet.address} bid ${token_address} ${token_ids[index]} failed`, err);
+      }).then((offer) => {
+        if (offer) {
+          const _asset = offer.asset;
+          console.log(`${wallet.address} bid on ${_asset.name}, which contract is: ${_asset.tokenAddress} and item id is: ${_asset.tokenId}`)
+        }
+      })
+    }
+  }
+  ctx.body = { "succuess": true };
 });
 
 export default router;
