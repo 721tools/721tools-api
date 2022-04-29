@@ -23,7 +23,7 @@ router.get('/tokens', async (ctx) => {
   if ('limit' in ctx.request.query) {
     limit = Number(ctx.request.query['limit']);
     if (limit < 0) {
-      page = 50;
+      limit = 50;
     }
     if (limit > 100) {
       limit = 100;
