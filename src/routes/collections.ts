@@ -244,14 +244,14 @@ router.post('/:slug/bid', async (ctx, next) => {
     ctx.status = 404;
     return;
   }
-  const provider = new HDWalletProvider(ctx.request.body.privite_key, "https://eth-mainnet.alchemyapi.io/v2/nFvCkBjYskYZdpdXO1bnNW1epn6Muz7G");
+  const provider = new HDWalletProvider(ctx.request.body.privite_key, process.env.ETH_RPC_URL);
   const wallet = new ethers.Wallet(ctx.request.body.privite_key);
   const seaport = new OpenSeaPort(provider, {
     networkName: Network.Main,
-    apiKey: "a680542f053b4de3a9a99e945936b8c7"
+    apiKey: process.env.ETH_API_KEY
   })
   const token_ids = ctx.request.body.token_ids;
-  const token_address = "0xd532b88607b1877fe20c181cba2550e3bbd6b31c";
+  const token_address = collection.contract_address;
   if (token_ids && token_ids.length > 0) {
     // @todo save it to db and to it async
     for (let index in token_ids) {

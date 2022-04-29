@@ -10,11 +10,11 @@ import genericErc721Abi from "../abis/ERC721.json";
 import Collection from '../entity/collection';
 
 
-const provider = new ethers.providers.JsonRpcProvider("https://eth-mainnet.alchemyapi.io/v2/nFvCkBjYskYZdpdXO1bnNW1epn6Muz7G");
+const provider = new ethers.providers.JsonRpcProvider(process.env.ETH_RPC_URL);
 
 const seaport = new OpenSeaPort(provider, {
   networkName: Network.Main,
-  apiKey: "a680542f053b4de3a9a99e945936b8c7"
+  apiKey: process.env.ETH_API_KEY
 })
 
 const chunk = 100;
