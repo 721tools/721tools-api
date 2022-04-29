@@ -55,20 +55,38 @@ const downloadMetadata = async (contract_address) => {
 
     const traits = calcTraits(metadatas);
     const tokens = getTokens(metadatas, traits);
+    if (await Collection.count({
+      contract_address: contract_address
+    }) > 0) {
+      Collection.update({
+        slug: opensea_res.collection.slug,
+        name: opensea_res.collection.name,
+        description: opensea_res.collection.description,
+        chain: "ETH",
+        total_supply: totalSupply,
+        current_supply: totalSupply,
+        total_revealed: totalSupply,
+        image_url: opensea_res.collection.imageUrl,
+        tokens: JSON.stringify(tokens),
+        traits: JSON.stringify(traits)
+      }, { where: { contract_address: contract_address } });
+    } else {
+      Collection.build({
+        slug: opensea_res.collection.slug,
+        name: opensea_res.collection.name,
+        description: opensea_res.collection.description,
+        contract_address: contract_address,
+        chain: "ETH",
+        total_supply: totalSupply,
+        current_supply: totalSupply,
+        total_revealed: totalSupply,
+        image_url: opensea_res.collection.imageUrl,
+        tokens: JSON.stringify(tokens),
+        traits: JSON.stringify(traits)
+      }).save();
+    }
 
-    Collection.build({
-      slug: opensea_res.collection.slug,
-      name: opensea_res.collection.name,
-      description: opensea_res.collection.description,
-      contract_address: contract_address,
-      chain: "ETH",
-      total_supply: totalSupply,
-      current_supply: totalSupply,
-      total_revealed: totalSupply,
-      image_url: opensea_res.collection.imageUrl,
-      tokens: JSON.stringify(tokens),
-      traits: JSON.stringify(traits)
-    }).save();
+
   } catch (err) {
     console.log(err);
   }
@@ -205,8 +223,8 @@ let getTokens = function (metadatas, traits): Token[] {
   return tokens;
 }
 
-router.get('/', async (ctx) => {
-  downloadMetadata("0x1a92f7381b9f03921564a437210bb9396471050c");
+router.get('/:contract_address', async (ctx) => {
+  downloadMetadata(ctx.params.contract_address);
   ctx.body = "OK";
 });
 
