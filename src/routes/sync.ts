@@ -31,14 +31,14 @@ const downloadMetadata = async (contract_address) => {
       firstTokenIndex = 1;
       tokenURI = await contract.tokenURI(firstTokenIndex);
     }
-    const tokenURIPattern = tokenURI.replace(firstTokenIndex.toString(), "{}");
+    const tokenURIPattern = tokenURI.replace(firstTokenIndex.toString(), "{}").replace("ipfs://", "https://ipfs.io/ipfs/");
 
     const tokenIds = [...Array(totalSupply).keys()].map(i => i + firstTokenIndex);
 
     let metadatas = [];
     let startTime = new Date().getTime()
-    let total_revealed = totalSupply;
-    for (let i = 0, j = tokenIds.length; i < j; i += chunk) {
+
+    for (let i = firstTokenIndex, j = tokenIds.length; i < j; i += chunk) {
       let chunkStartTime = new Date().getTime()
       console.log("start: ", i, "/end: ", i + chunk - 1, "/all:", j);
       const temporaryJobs = tokenIds.slice(i, i + chunk).map(tokenId => {
@@ -51,10 +51,10 @@ const downloadMetadata = async (contract_address) => {
       metadatas = metadatas.concat(filtedRes);
       console.log(`res of ${i} to ${i + chunk - 1} takes ${new Date().getTime() - chunkStartTime} ms`, 'len', res.length)
       if (filtedRes.length < res.length) {
-        total_revealed = metadatas.length;
         break;
       }
     }
+    let total_revealed = metadatas.length;
     console.log('work finished, takes ms', new Date().getTime() - startTime)
 
     const traits = calcTraits(metadatas);
