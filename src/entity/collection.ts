@@ -29,6 +29,10 @@ const Collection = sequelize.define("collection", {
         type: Sequelize.STRING,
         allowNull: false,
     },
+    start_index: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+    },
     total_supply: {
         type: Sequelize.INTEGER,
         allowNull: false,

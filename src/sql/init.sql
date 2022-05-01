@@ -5,6 +5,7 @@ CREATE TABLE `collection` (
   `contract_address` varchar(64) UNIQUE NOT NULL DEFAULT '',
   `description` varchar(1024) NOT NULL DEFAULT '',
   `chain` varchar(16) NOT NULL DEFAULT '',
+  `start_index` int NOT NULL DEFAULT 0,
   `total_supply` int NOT NULL DEFAULT 0,
   `current_supply` int NOT NULL DEFAULT 0,
   `total_revealed` int NOT NULL DEFAULT 0,
