@@ -220,8 +220,9 @@ router.get('/:slug/tokens', async (ctx) => {
   });
 
   filtedTokens = _.sortBy(filtedTokens, 'rank');
-  if (!allTokens || allTokens.length == 0) {
-    for (let index = collection.start_index; index < collection.total_supply + collection.start_index; index++) {
+  if (!allTokens || allTokens.length == 0 || allTokens.length < collection.total_supply) {
+    let start_index = collection.total_revealed + collection.start_index;
+    for (let index = start_index; index < collection.total_supply + collection.start_index; index++) {
       let item: Token = { token_id: index, image: collection.image_url, score: 0, rank: collection.total_supply, traits: [] };
       filtedTokens.push(item);
     }

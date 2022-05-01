@@ -87,7 +87,7 @@ const downloadMetadata = async (contract_address) => {
         start_index: firstTokenIndex,
         total_supply: totalSupply,
         current_supply: totalSupply,
-        total_revealed: totalSupply,
+        total_revealed: total_revealed,
         image_url: collection.image_url,
         tokens: JSON.stringify(tokens),
         traits: JSON.stringify(traits)
