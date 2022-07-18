@@ -1,8 +1,9 @@
-import Koa from 'koa';
-import './config/env';
-import router from './routes';
-import cors from 'koa2-cors';
-import bodyParser from 'koa-body-parser';
+const Koa = require('koa');
+const httpRouter = require('./routes');
+const cors = require('koa2-cors');
+const bodyParser = require('koa-body-parser');
+
+require('./config/env');
 
 const app = new Koa();
 const port = process.env.SERVER_PORT || 3000;
@@ -22,7 +23,7 @@ app.use(async (ctx, next) => {
   console.log(`Time: ${ms}ms`);
 });
 
-app.use(router.routes()).use(router.allowedMethods());
+app.use(httpRouter.routes()).use(httpRouter.allowedMethods());
 
 app.listen(port);
 

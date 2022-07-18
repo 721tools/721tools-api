@@ -1,7 +1,7 @@
-import _sequelize from 'sequelize';
+const _sequelize = require("sequelize");
 const { Model, Sequelize } = _sequelize;
 
-export default class OpenseaItems extends Model {
+module.exports = class OpenseaItems extends Model {
   static init(sequelize, DataTypes) {
     return super.init({
       id: {

@@ -1,13 +1,15 @@
-import _sequelize from "sequelize";
-const DataTypes = _sequelize.DataTypes;
-import _Contracts from  "./contracts.js";
-import _OpenseaCollections from  "./opensea_collections.js";
-import _OpenseaItems from  "./opensea_items.js";
-import _Orders from  "./orders.js";
-import _Tokens from  "./tokens.js";
-import _Transactions from  "./transactions.js";
+const _sequelize = require("sequelize");
 
-export default function initModels(sequelize) {
+const DataTypes = _sequelize.DataTypes;
+const _Contracts = require('./contracts.js');
+const _OpenseaCollections = require('./opensea_collections.js');
+const _OpenseaItems = require('./opensea_items.js');
+const _Orders = require('./orders.js');
+const _Tokens = require('./tokens.js');
+const _Transactions = require('./transactions.js');
+
+
+const initModels = (sequelize) => {
   const Contracts = _Contracts.init(sequelize, DataTypes);
   const OpenseaCollections = _OpenseaCollections.init(sequelize, DataTypes);
   const OpenseaItems = _OpenseaItems.init(sequelize, DataTypes);
@@ -25,3 +27,5 @@ export default function initModels(sequelize) {
     Transactions,
   };
 }
+
+module.exports = initModels;
