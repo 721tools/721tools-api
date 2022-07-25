@@ -24,7 +24,9 @@
     "log4js": "^6.4.5",
     "mysql": "^2.18.1",
     "mysql2": "^2.3.3",
+    "node-libcurl": "^2.3.4",
     "opensea-js": "^3.0.4",
+    "rate-limiter-flexible": "^2.3.7",
     "sequelize": "^6.19.0",
     "underscore": "^1.13.3",
     "web3": "^1.7.3"
