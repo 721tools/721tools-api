@@ -28,8 +28,9 @@ ListingRouter.get('/', async (ctx) => {
 
   const collections = ctx.request.query["collections"];
 
-  let targetCollections = [];
-  let collecitonCriteria: any = {};
+  let collecitonCriteria: any = {
+    schema: 'ERC721'
+  };
   if (collections && collections.length > 0) {
     collecitonCriteria.slug = collections;
   }
@@ -44,64 +45,22 @@ ListingRouter.get('/', async (ctx) => {
     };
   }
 
-  const collectionsRes = await OpenseaCollections.findAll(collecitonCriteria);
-  ctx.body = {
-    collectionsRes
+  const collectionsRes = await OpenseaCollections.findAll({
+    where: collecitonCriteria, limit: limit,
+  });
+
+  if (!collectionsRes || collectionsRes.length == 0) {
+    ctx.body = []
+    return;
   }
 
-
-
-  // let name = "";
-  // if ('name' in ctx.request.query) {
-  //   name = ctx.request.query['name'];
-  // }
-  // let criteria = {};
-  // if (name) {
-  //   criteria = {
-  //     [Sequelize.Op.or]: [
-  //       {
-  //         slug: {
-  //           [Sequelize.Op.like]: `%${name}%`
-  //         }
-  //       },
-  //       {
-  //         name: {
-  //           [Sequelize.Op.like]: `%${name}%`
-  //         }
-  //       },
-  //       {
-  //         contract_address: {
-  //           [Sequelize.Op.like]: `%${name}%`
-  //         }
-  //       }
-  //     ]
-  //   }
-  // }
-  // const { rows, count } = await Collection.findAndCountAll({
-  //   where: criteria,
-  //   attributes: { exclude: ['tokens', 'traits'] },
-  //   offset: (page.valueOf() - 1) * limit.valueOf(),
-  //   limit: limit,
-  //   order: [['id', 'ASC']]
-  // });
-  // ctx.body = {
-  //   page: page,
-  //   limit: limit,
-  //   total: count,
-  //   collections: rows.map(collection => {
-  //     return {
-  //       slug: collection.slug,
-  //       name: collection.name,
-  //       description: collection.description,
-  //       chain: collection.chain,
-  //       contract_address: collection.contract_address,
-  //       image_url: collection.image_url,
-  //       total_supply: collection.total_supply,
-  //       current_supply: collection.current_supply,
-  //       total_revealed: collection.total_revealed
-  //     }
-  //   })
-  // }
+  const collectionMap = new Map(collectionsRes.map(i => [i.slug, i.dataValues]));
+  let orderCriteria: any = {
+    schema: 'ERC721'
+  };
+  ctx.body = {
+    collectionMap
+  }
 });
 
 const getNumberParam = (param, ctx) => {
