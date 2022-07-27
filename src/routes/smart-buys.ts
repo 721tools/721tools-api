@@ -10,7 +10,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (!userId || userId == 0) {
     ctx.status = 401;
     ctx.body = {
-      'error': HttpError[HttpError.UNAUTHORIZED]
+      error: HttpError[HttpError.UNAUTHORIZED]
     }
     return;
   }
@@ -18,7 +18,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (!('slug' in ctx.request.body)) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_SLUG]
+      error: HttpError[HttpError.NOT_VALID_SLUG]
     }
     return;
   }
@@ -26,7 +26,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (!slug) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_SLUG]
+      error: HttpError[HttpError.NOT_VALID_SLUG]
     }
     return;
   }
@@ -40,7 +40,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (!collection) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_SLUG]
+      error: HttpError[HttpError.NOT_VALID_SLUG]
     }
     return;
   }
@@ -50,7 +50,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (amount <= 0) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_AMOUNT]
+      error: HttpError[HttpError.NOT_VALID_AMOUNT]
     }
     return;
   }
@@ -59,7 +59,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (price <= 0) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_PRICE]
+      error: HttpError[HttpError.NOT_VALID_PRICE]
     }
     return;
   }
@@ -68,7 +68,7 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (expiration <= 0) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_EXPIRATION]
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
     return;
   }
@@ -76,33 +76,27 @@ SmartBuysRouter.put('/', async (ctx) => {
   if (expiration < new Date().getTime() + 60 * 60 * 1000) {
     ctx.status = 400;
     ctx.body = {
-      'error': HttpError[HttpError.NOT_VALID_EXPIRATION]
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
     return;
   }
 
   const expirationDate = new Date(expiration);
 
-  try {
-    await SmartBuys.create({
-      user_id: userId,
-      slug: slug,
-      contract_address: collection.contract_address,
-      min_rank: getNumberParam('min_rank', ctx),
-      max_rank: getNumberParam('max_rank', ctx),
-      amount: amount,
-      price: price,
-      expiration_date: expirationDate,
-      status: SmartBuyStatus[SmartBuyStatus.INIT],
-      traits: ctx.request.body['traits'],
-      token_ids: ctx.request.body['token_ids'],
-    });
-    ctx.body = {}
-  } catch (error) {
-    console.log(error);
-    ctx.status = 500;
-    ctx.body = error.message;
-  }
+  await SmartBuys.create({
+    user_id: userId,
+    slug: slug,
+    contract_address: collection.contract_address,
+    min_rank: getNumberParam('min_rank', ctx),
+    max_rank: getNumberParam('max_rank', ctx),
+    amount: amount,
+    price: price,
+    expiration_date: expirationDate,
+    status: SmartBuyStatus[SmartBuyStatus.INIT],
+    traits: ctx.request.body['traits'],
+    token_ids: ctx.request.body['token_ids'],
+  });
+  ctx.body = {}
 });
 
 const getNumberParam = (param, ctx) => {
