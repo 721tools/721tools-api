@@ -138,19 +138,29 @@ WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; b
   result.erc20_balances.WETH = parseFloat(parseFloat(ethers.utils.formatUnits(wethBalance, 'ether')).toFixed(4));
   result.total_value_in_eth += result.erc20_balances.WETH;
 
+
+
+  result.nfts = await fetchNFTs(address);
+
+
+
+  result.nfts = await setRank(result.nfts);
+
   result.total_value_in_eth = parseFloat(result.total_value_in_eth.toFixed(4));
+
+  result.nfts = await setFloorPrice(result.nfts);
+  if (result.nfts && result.nfts.length > 0) {
+    for (const nft of result.nfts) {
+      if (nft.floor_price > 0) {
+        result.total_value_in_eth += nft.floor_price;
+      }
+    }
+  }
+
   if (result.total_value_in_eth > 0) {
     const ethPrice = await axios.get(`https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD`);
     result.total_value_in_usd = parseFloat((result.total_value_in_eth * ethPrice.data.USD).toFixed(4));
   }
-
-  result.nfts = await fetchNFTs(address);
-
-  result.nfts = await setFloorPrice(result.nfts);
-
-  result.nfts = await setRank(result.nfts);
-
-
   ctx.body = {
     params: result
   }
