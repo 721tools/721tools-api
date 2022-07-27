@@ -40,24 +40,26 @@ const fetchNFTs = async (owner: any) => {
   let cursor = null;
   let hasNextPage = true;
   let items = [];
-  const data = await fetchItemsByOwner(owner, cursor);
-  if (data.previous) {
-    cursor = data.previous;
-  } else {
-    hasNextPage = false;
+  while (hasNextPage) {
+    const data = await fetchItemsByOwner(owner, cursor);
+    if (data.previous) {
+      cursor = data.previous;
+    } else {
+      hasNextPage = false;
+    }
+    Array.prototype.push.apply(items, _.map(data.assets.reverse(), (item: { token_id: any; collection: { slug: any; name: any; }; name: any; asset_contract: { schema_name: any; address: any; total_supply: any; }; image_url: any; last_sale: { payment_token: { eth_price: string; }; }; }) => ({
+      token_id: item.token_id,
+      slug: item.collection.slug,
+      name: item.name ? item.name : `${item.collection.name} #${item.token_id}`,
+      schema: item.asset_contract.schema_name,
+      contract: item.asset_contract.address,
+      total_supply: item.asset_contract.total_supply,
+      image: item.image_url ? item.image_url : "",
+      floor_price: 0,
+      last_price: item.last_sale ? parseFloat(parseFloat(item.last_sale.payment_token.eth_price).toFixed(4)) : 0,
+      rank: 0
+    })));
   }
-  Array.prototype.push.apply(items, _.map(data.assets.reverse(), (item: { token_id: any; collection: { slug: any; name: any; }; name: any; asset_contract: { schema_name: any; address: any; total_supply: any; }; image_url: any; last_sale: { payment_token: { eth_price: string; }; }; }) => ({
-    token_id: item.token_id,
-    slug: item.collection.slug,
-    name: item.name ? item.name : `${item.collection.name} #${item.token_id}`,
-    schema: item.asset_contract.schema_name,
-    contract: item.asset_contract.address,
-    total_supply: item.asset_contract.total_supply,
-    image: item.image_url ? item.image_url : "",
-    floor_price: 0,
-    last_price: item.last_sale ? parseFloat(parseFloat(item.last_sale.payment_token.eth_price).toFixed(4)) : 0,
-    rank: 0
-  })));
   return items;
 }
 
@@ -145,6 +147,7 @@ WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; b
   result.nfts = await fetchNFTs(address);
 
   result.nfts = await setFloorPrice(result.nfts);
+
   result.nfts = await setRank(result.nfts);
 
 
