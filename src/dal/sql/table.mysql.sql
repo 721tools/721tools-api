@@ -98,7 +98,8 @@ CREATE TABLE `opensea_collections` (
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
-  UNIQUE(`contract_address`, `token`)
+  UNIQUE(`contract_address`, `token`),
+  INDEX (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `opensea_items`;
@@ -152,4 +153,27 @@ CREATE TABLE `orders` (
   `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   INDEX (`contract_address`, `token_address`, `type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `smart_buys`;
+CREATE TABLE `smart_buys` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL DEFAULT 0,
+  `slug` varchar(128) NOT NULL DEFAULT '', 
+  `contract_address` varchar(64) NOT NULL DEFAULT '',
+  `min_rank` int NOT NULL DEFAULT 0,
+  `max_rank` int NOT NULL DEFAULT 0,
+  `amount` int NOT NULL DEFAULT 0,
+  `purchased` int NOT NULL DEFAULT 0,
+  `price` decimal(12, 4) NOT NULL DEFAULT 0,
+  `token_ids` varchar(256) NOT NULL DEFAULT '', /* split by , */
+  `traits` JSON,
+  `status` varchar(16) NOT NULL DEFAULT '',
+  `error_code` varchar(32) NOT NULL DEFAULT '',
+  `error_details` varchar(256) NOT NULL DEFAULT '',
+  `expiration_date` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  INDEX (`contract_address`, `status`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
