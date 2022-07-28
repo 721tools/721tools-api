@@ -80,7 +80,7 @@ CREATE TABLE `opensea_collections` (
   `discord_url` varchar(256) NOT NULL DEFAULT '',
   `twitter_username` varchar(32) NOT NULL DEFAULT '',  
   `instagram_username` varchar(32) NOT NULL DEFAULT '',    
-  `takerRelayerFee` int NOT NULL DEFAULT 750,
+  `taker_relayer_fee` int NOT NULL DEFAULT 750,
   `num_owners` int NOT NULL DEFAULT 0,
   `total_sales` int NOT NULL DEFAULT 0,
   `thirty_day_sales` int NOT NULL DEFAULT 0,

@@ -1,6 +1,8 @@
 import Router from 'koa-router';
-import Sequelize from 'sequelize';
+import Sequelize, { col } from 'sequelize';
+import { ethers } from 'ethers';
 import { OpenseaCollections } from '../dal/db';
+import { HttpError } from '../model/http-error';
 
 const CollectionsRouter = new Router({})
 
@@ -74,11 +76,73 @@ CollectionsRouter.get('/', async (ctx) => {
         contract: collection.contract_address,
         total_supply: collection.total_supply,
         image: collection.image_url,
-        floor_price: collection.floor_price
+        floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4))
       }
     })
   }
 });
+
+
+CollectionsRouter.get('/:slug', async (ctx) => {
+  let slug = ctx.params.slug;
+  if (!slug) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.NO_COLLECTION_FOUND]
+    }
+    return;
+  }
+
+  let criteria = {};
+  if (slug.lastIndexOf("0x") === 0 && ethers.utils.isAddress(slug)) {
+    criteria = {
+      contract_address: slug
+    }
+  } else {
+    criteria = {
+      slug: slug
+    }
+  }
+  const collection = await OpenseaCollections.findOne({
+    where: criteria
+  });
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  ctx.body = {
+    slug: collection.slug,
+    name: collection.name,
+    schema: collection.schema,
+    contract: collection.contract_address,
+    total_supply: collection.total_supply,
+    image: collection.image_url,
+    banner_image: collection.banner_image,
+    floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
+    description: collection.description,
+    extener_url: collection.extener_url,
+    discord_url: collection.discord_url,
+    twitter_username: collection.twitter_username,
+    instagram_username: collection.instagram_username,
+    taker_relayer_fee: collection.taker_relayer_fee,
+    num_owners: collection.num_owners,
+    one_day_sales: collection.one_day_sales,
+    seven_day_sales: collection.seven_day_sales,
+    thirty_day_sales: collection.thirty_day_sales,
+    total_sales: collection.total_sales,
+    one_day_volume: collection.one_day_volume,
+    seven_day_volume: collection.seven_day_volume,
+    thirty_day_volume: collection.thirty_day_volume,
+    total_volume: collection.total_volume,
+    market_cap: collection.market_cap,
+    traits: collection.traits,
+  }
+});
+
 
 const getNumberQueryParam = (param, ctx) => {
   let paramValue: number = 0;
