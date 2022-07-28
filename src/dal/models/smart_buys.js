@@ -74,7 +74,12 @@ module.exports = class SmartBuys extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      expiration_date: {
+      expiration_time: {
+        type: DataTypes.DATE(6),
+        allowNull: false,
+        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
+      },
+      create_time: {
         type: DataTypes.DATE(6),
         allowNull: false,
         defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')

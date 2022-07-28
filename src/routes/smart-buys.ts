@@ -110,4 +110,73 @@ const getNumberParam = (param, ctx) => {
   return paramValue;
 };
 
+const getNumberQueryParam = (param, ctx) => {
+  let paramValue: number = 0;
+  if (param in ctx.request.query) {
+    paramValue = Number(ctx.request.query[param]);
+    if (paramValue < 0) {
+      paramValue = 0;
+    }
+  }
+  return paramValue;
+};
+
+
+SmartBuysRouter.get('/', async (ctx) => {
+  // @todo from session
+  let userId = 1;
+  if (!userId || userId == 0) {
+    ctx.status = 401;
+    ctx.body = {
+      error: HttpError[HttpError.UNAUTHORIZED]
+    }
+    return;
+  }
+  let page = getNumberQueryParam('page', ctx);
+  if (page <= 0) {
+    page = 1;
+  }
+
+  let limit = getNumberQueryParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 10;
+  }
+  if (limit > 20) {
+    limit = 20;
+  }
+
+  const { rows, count } = await SmartBuys.findAndCountAll({
+    where: {
+      user_id: userId
+    },
+    offset: (page.valueOf() - 1) * limit.valueOf(),
+    limit: limit,
+    order: [['id', 'ASC']]
+  });
+  ctx.body = {
+    page: page,
+    limit: limit,
+    total: count,
+    data: rows.map(smartBuy => {
+      return {
+        slug: smartBuy.slug,
+        min_rank: smartBuy.min_rank,
+        max_rank: smartBuy.max_rank,
+        traits: smartBuy.traits,
+        token_ids: smartBuy.token_ids,
+        price: smartBuy.price,
+        amount: smartBuy.amount,
+        purchased: smartBuy.purchased,
+        status: smartBuy.status,
+        error_code: smartBuy.error_code,
+        error_details: smartBuy.error_details,
+        expiration_time: smartBuy.expirationDate,
+        create_time: smartBuy.create_time,
+        update_time: smartBuy.update_time
+      }
+    })
+  }
+});
+
+
 module.exports = SmartBuysRouter;
