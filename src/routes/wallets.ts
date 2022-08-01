@@ -92,7 +92,7 @@ const setRank = async (nfts) => {
     const selectTokens = [];
     for (const nft of nfts) {
       selectTokens.push({
-        "collection_slug": nft.slug,
+        "contract_address": nft.contract,
         "token_address": nft.token_id
       });
     }
@@ -112,8 +112,6 @@ const setRank = async (nfts) => {
   }
   return nfts;
 }
-
-
 
 WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; body: { total_value_in_usd?: number; total_value_in_eth?: number; balance?: number; erc20_balances?: { WETH: number; }; nfts?: any[]; params?: { total_value_in_usd: number; total_value_in_eth: number; balance: number; erc20_balances: { WETH: number; }; nfts: any[]; }; }; }) => {
   let address = ctx.params.address;

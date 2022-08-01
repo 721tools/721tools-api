@@ -1,9 +1,9 @@
 const Koa = require('koa');
 const httpRouter = require('./routes');
 const cors = require('koa2-cors');
-const bodyParser = require('koa-body-parser');
 const session = require('koa-session');
-const koaCors = require('koa-cors') //TODO: for test
+const bodyParser = require('koa-body-parser');
+import { HttpError } from './model/http-error';
 
 require('./config/env');
 
@@ -33,11 +33,21 @@ app.use(async (ctx, next) => {
   console.log(`Time: ${ms}ms`);
 });
 
-app.use(httpRouter.routes()).use(httpRouter.allowedMethods())
-  .use(koaCors({
-    origin: true,
-    credentials: true
-  }));
+
+app.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (err) {
+    // will only respond with JSON
+    ctx.status = err.statusCode || err.status || 500;
+    ctx.body = {
+      error: HttpError[HttpError.INTERNAL_SERVER_RROR],
+      errorMessage: err.message
+    };
+  }
+})
+
+app.use(httpRouter.routes()).use(httpRouter.allowedMethods());
 
 app.listen(port);
 

@@ -109,7 +109,7 @@ module.exports = class OpenseaCollections extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      takerRelayerFee: {
+      taker_relayer_fee: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 750
