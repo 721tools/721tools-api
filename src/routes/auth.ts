@@ -13,15 +13,7 @@ AuthRouter.get("/nonce", async (ctx) => {
 
 
 
-AuthRouter.get("/me", requireMember, async (ctx) => {
-  if (!ctx.session.siwe) {
-    ctx.status = 401;
-    ctx.body = {
-      message: 'You have to first sign_in'
-    }
-    return;
-  }
-
+AuthRouter.get("/me", requireLogin, async (ctx) => {
   ctx.body = {
     address: ctx.session.siwe.address
   }
