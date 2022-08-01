@@ -1,6 +1,7 @@
 import { generateNonce, SiweMessage, ErrorTypes } from "siwe";
 import { ethers } from "ethers";
 import Router from "koa-router";
+import { requireLogin, requireMember} from "../helpers/auth_helper"
 
 const AuthRouter = new Router({});
 AuthRouter.get("/nonce", async (ctx) => {
@@ -10,7 +11,9 @@ AuthRouter.get("/nonce", async (ctx) => {
   };
 });
 
-AuthRouter.get("/me", async (ctx) => {
+
+
+AuthRouter.get("/me", requireMember, async (ctx) => {
   if (!ctx.session.siwe) {
     ctx.status = 401;
     ctx.body = {
