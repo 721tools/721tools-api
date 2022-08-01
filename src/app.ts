@@ -3,6 +3,7 @@ const httpRouter = require('./routes');
 const cors = require('koa2-cors');
 const bodyParser = require('koa-body-parser');
 const session = require('koa-session');
+const koaCors = require('koa-cors') //TODO: for test
 
 require('./config/env');
 
@@ -32,7 +33,11 @@ app.use(async (ctx, next) => {
   console.log(`Time: ${ms}ms`);
 });
 
-app.use(httpRouter.routes()).use(httpRouter.allowedMethods());
+app.use(httpRouter.routes()).use(httpRouter.allowedMethods())
+  .use(koaCors({
+    origin: true,
+    credentials: true
+  }));
 
 app.listen(port);
 
