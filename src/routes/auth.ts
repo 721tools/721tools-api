@@ -1,7 +1,7 @@
 import { generateNonce, SiweMessage, ErrorTypes } from "siwe";
 import Router from "koa-router";
 import { HttpError } from '../model/http-error';
-import { requireLogin, requireMember } from "../helpers/auth_helper"
+import { requireLogin, requireWhitelist, requireMember, isWhitelist } from "../helpers/auth_helper"
 import { User } from '../dal/db';
 import { UserType } from '../model/user-type';
 

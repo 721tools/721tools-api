@@ -78,6 +78,12 @@ export const requireMember = async (ctx, next) => {
 
 }
 
+export const isWhitelist = async (ctx) => {
+    const address = ctx.session.siwe.address;
+    const whitelistAddress = fs.readFileSync("address.txt", "utf8").split(/\r?\n/);
+    return whitelistAddress.includes(address);
+}
+
 
 export const requireWhitelist = async (ctx, next) => {
     if (!ctx.session.siwe) {
@@ -88,10 +94,7 @@ export const requireWhitelist = async (ctx, next) => {
         return;
     }
 
-    const address = ctx.session.siwe.address;
-    const whitelistAddress = fs.readFileSync("address.txt", "utf8").split(/\r?\n/);
-
-    if (!whitelistAddress.includes(address)) {
+    if (!isWhitelist(ctx)) {
         ctx.status = 403;
         ctx.body = {
             error: HttpError[HttpError.NOT_IN_WHITELIST]

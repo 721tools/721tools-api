@@ -2,19 +2,12 @@ import Router from 'koa-router';
 import { OpenseaCollections, SmartBuys } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { SmartBuyStatus } from '../model/smart-buy-status';
-import { requireLogin } from "../helpers/auth_helper"
+import { requireWhitelist } from "../helpers/auth_helper"
 
 const SmartBuysRouter = new Router({})
 
-SmartBuysRouter.put('/', requireLogin, async (ctx) => {
-  let userId = 1;
-  if (!userId || userId == 0) {
-    ctx.status = 401;
-    ctx.body = {
-      error: HttpError[HttpError.UNAUTHORIZED]
-    }
-    return;
-  }
+SmartBuysRouter.put('/', requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
 
   if (!('slug' in ctx.request.body)) {
     ctx.status = 400;
@@ -85,7 +78,7 @@ SmartBuysRouter.put('/', requireLogin, async (ctx) => {
   const expirationTime = new Date(expiration);
 
   await SmartBuys.create({
-    user_id: userId,
+    user_id: user.id,
     slug: slug,
     contract_address: collection.contract_address,
     min_rank: getNumberParam('min_rank', ctx),
@@ -123,16 +116,9 @@ const getNumberQueryParam = (param, ctx) => {
 };
 
 
-SmartBuysRouter.get('/', requireLogin, async (ctx) => {
-  // @todo from session
-  let userId = 1;
-  if (!userId || userId == 0) {
-    ctx.status = 401;
-    ctx.body = {
-      error: HttpError[HttpError.UNAUTHORIZED]
-    }
-    return;
-  }
+SmartBuysRouter.get('/', requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+
   let page = getNumberQueryParam('page', ctx);
   if (page <= 0) {
     page = 1;
@@ -148,7 +134,7 @@ SmartBuysRouter.get('/', requireLogin, async (ctx) => {
 
   const { rows, count } = await SmartBuys.findAndCountAll({
     where: {
-      user_id: userId
+      user_id: user.id
     },
     offset: (page.valueOf() - 1) * limit.valueOf(),
     limit: limit,
