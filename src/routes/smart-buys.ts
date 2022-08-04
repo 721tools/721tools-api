@@ -2,10 +2,11 @@ import Router from 'koa-router';
 import { OpenseaCollections, SmartBuys } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { SmartBuyStatus } from '../model/smart-buy-status';
+import { requireLogin } from "../helpers/auth_helper"
 
 const SmartBuysRouter = new Router({})
-SmartBuysRouter.put('/', async (ctx) => {
-  // @todo from session
+
+SmartBuysRouter.put('/', requireLogin, async (ctx) => {
   let userId = 1;
   if (!userId || userId == 0) {
     ctx.status = 401;
@@ -122,7 +123,7 @@ const getNumberQueryParam = (param, ctx) => {
 };
 
 
-SmartBuysRouter.get('/', async (ctx) => {
+SmartBuysRouter.get('/', requireLogin, async (ctx) => {
   // @todo from session
   let userId = 1;
   if (!userId || userId == 0) {

@@ -37,6 +37,7 @@ AuthRouter.post("/login", async (ctx) => {
       return;
     }
     ctx.session.siwe = fields;
+    console.log(fields)
     // ctx.session.cookie.expires = new Date(fields.expirationTime);
     ctx.body = {}
   } catch (e) {
