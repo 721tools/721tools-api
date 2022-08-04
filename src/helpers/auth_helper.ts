@@ -1,6 +1,8 @@
 import { HttpError } from '../model/http-error';
 import { ethers } from "ethers";
 import fs from "fs";
+import { User } from '../dal/db';
+import { UserType } from '../model/user-type';
 
 export const requireLogin = async (ctx, next) => {
     if (!ctx.session.siwe) {
@@ -10,6 +12,34 @@ export const requireLogin = async (ctx, next) => {
         };
         return;
     }
+    const userId = ctx.session.siwe.user.id;
+    const user = await User.findOne({
+        where: {
+            id: userId
+        }
+    });
+    if (user.valid == 0) {
+        ctx.session.siwe = null;
+        ctx.session.nonce = null;
+        ctx.status = 403;
+        ctx.body = {
+            error: HttpError[HttpError.USER_DISABLED]
+        }
+        return;
+    }
+
+    if (user.type !== UserType[UserType.LIFELONG] && user.expiration_time < new Date()) {
+        ctx.session.siwe = null;
+        ctx.session.nonce = null;
+        ctx.status = 403;
+        ctx.body = {
+            error: HttpError[HttpError.USER_EXPIRED]
+        }
+        return;
+    }
+
+    ctx.session.siwe.user = user;
+
     next();
 }
 

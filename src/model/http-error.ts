@@ -10,6 +10,8 @@ export enum HttpError {
     NOT_NFT_HOLDER,
     NOT_IN_WHITELIST,
     LOGIN_ERROR,
+    USER_DISABLED,
+    USER_EXPIRED,
 
     INTERNAL_SERVER_RROR,
 }

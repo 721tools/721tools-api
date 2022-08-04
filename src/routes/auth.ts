@@ -17,7 +17,6 @@ AuthRouter.get("/nonce", async (ctx) => {
 AuthRouter.get("/me", requireLogin, async (ctx) => {
   const user = ctx.session.siwe.user;
   ctx.body = {
-    id: user.id,
     address: user.address,
     smart_address: user.smart_address,
     type: user.type,
@@ -65,6 +64,27 @@ AuthRouter.post("/login", async (ctx) => {
         create_time: now,
       });
     } else {
+      if (user.valid == 0) {
+        ctx.session.siwe = null;
+        ctx.session.nonce = null;
+        ctx.status = 403;
+        ctx.body = {
+          error: HttpError[HttpError.USER_DISABLED]
+        }
+        return;
+      }
+
+      if (user.type !== UserType[UserType.LIFELONG] && user.expiration_time < now) {
+        ctx.session.siwe = null;
+        ctx.session.nonce = null;
+        ctx.status = 403;
+        ctx.body = {
+          error: HttpError[HttpError.USER_EXPIRED]
+        }
+        return;
+      }
+
+
       await User.update({
         last_login_time: now,
       }, {
@@ -78,7 +98,6 @@ AuthRouter.post("/login", async (ctx) => {
 
     ctx.session.siwe.user = user;
     ctx.body = {
-      id: user.id,
       address: user.address,
       smart_address: user.smart_address,
       type: user.type,
