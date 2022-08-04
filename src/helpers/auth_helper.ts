@@ -1,5 +1,6 @@
 import { HttpError } from '../model/http-error';
 import { ethers } from "ethers";
+import fs from "fs";
 
 export const requireLogin = async (ctx, next) => {
     if (!ctx.session.siwe) {
@@ -40,6 +41,30 @@ export const requireMember = async (ctx, next) => {
         ctx.status = 403;
         ctx.body = {
             error: HttpError[HttpError.UNAUTHORIZED]
+        };
+        return;
+    }
+    next();
+
+}
+
+
+export const requireWhitelist = async (ctx, next) => {
+    if (!ctx.session.siwe) {
+        ctx.status = 401;
+        ctx.body = {
+            error: HttpError[HttpError.UNAUTHORIZED]
+        };
+        return;
+    }
+
+    const address = ctx.session.siwe.address;
+    const whitelistAddress = fs.readFileSync("address.txt", "utf8").split(/\r?\n/);
+
+    if (!whitelistAddress.includes(address)) {
+        ctx.status = 403;
+        ctx.body = {
+            error: HttpError[HttpError.NOT_IN_WHITELIST]
         };
         return;
     }
