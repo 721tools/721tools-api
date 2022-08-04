@@ -15,8 +15,15 @@ AuthRouter.get("/nonce", async (ctx) => {
 });
 
 AuthRouter.get("/me", requireLogin, async (ctx) => {
+  const user = ctx.session.siwe.user;
   ctx.body = {
-    address: ctx.session.siwe.address
+    id: user.id,
+    address: user.address,
+    smart_address: user.smart_address,
+    type: user.type,
+    last_login_time: user.last_login_time.getTime(),
+    expiration_time: user.expiration_time.getTime(),
+    create_time: user.create_time.getTime(),
   }
 })
 
@@ -69,6 +76,7 @@ AuthRouter.post("/login", async (ctx) => {
 
     user.last_login_time = now;
 
+    ctx.session.siwe.user = user;
     ctx.body = {
       id: user.id,
       address: user.address,
