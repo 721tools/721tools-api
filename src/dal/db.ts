@@ -33,4 +33,5 @@ export const {
   Tokens,
   Transactions,
   SmartBuys,
+  User,
 } = initModels(sequelize)

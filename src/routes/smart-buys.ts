@@ -82,7 +82,7 @@ SmartBuysRouter.put('/', requireLogin, async (ctx) => {
     return;
   }
 
-  const expirationDate = new Date(expiration);
+  const expirationTime = new Date(expiration);
 
   await SmartBuys.create({
     user_id: userId,
@@ -92,7 +92,7 @@ SmartBuysRouter.put('/', requireLogin, async (ctx) => {
     max_rank: getNumberParam('max_rank', ctx),
     amount: amount,
     price: price,
-    expiration_date: expirationDate,
+    expiration_time: expirationTime,
     status: SmartBuyStatus[SmartBuyStatus.INIT],
     traits: ctx.request.body['traits'],
     token_ids: ctx.request.body['token_ids'],
@@ -171,9 +171,9 @@ SmartBuysRouter.get('/', requireLogin, async (ctx) => {
         status: smartBuy.status,
         error_code: smartBuy.error_code,
         error_details: smartBuy.error_details,
-        expiration_time: smartBuy.expirationDate,
-        create_time: smartBuy.create_time,
-        update_time: smartBuy.update_time
+        expiration_time: smartBuy.expiration_time.getTime(),
+        create_time: smartBuy.create_time.getTime(),
+        update_time: smartBuy.update_time.getTime()
       }
     })
   }

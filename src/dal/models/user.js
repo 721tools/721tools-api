@@ -35,6 +35,11 @@ module.exports = class User extends Model {
         allowNull: false,
         defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
       },
+      last_login_time: {
+        type: DataTypes.DATE(6),
+        allowNull: false,
+        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
+      },
       create_time: {
         type: DataTypes.DATE(6),
         allowNull: false,
@@ -56,6 +61,14 @@ module.exports = class User extends Model {
           using: "BTREE",
           fields: [
             { name: "id" },
+          ]
+        },
+        {
+          name: "address",
+          unique: true,
+          using: "BTREE",
+          fields: [
+            { name: "address" },
           ]
         },
       ]

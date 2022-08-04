@@ -2,6 +2,9 @@ import { generateNonce, SiweMessage, ErrorTypes } from "siwe";
 import Router from "koa-router";
 import { HttpError } from '../model/http-error';
 import { requireLogin, requireMember } from "../helpers/auth_helper"
+import { User } from '../dal/db';
+import { UserType } from '../model/user-type';
+
 
 const AuthRouter = new Router({});
 AuthRouter.get("/nonce", async (ctx) => {
@@ -37,9 +40,44 @@ AuthRouter.post("/login", async (ctx) => {
       return;
     }
     ctx.session.siwe = fields;
-    console.log(fields)
-    // ctx.session.cookie.expires = new Date(fields.expirationTime);
-    ctx.body = {}
+    const address = fields.address;
+    let user = await User.findOne({
+      where: {
+        address: address
+      }
+    });
+    const now = new Date();
+    if (!user) {
+      user = await User.create({
+        address: address,
+        smart_address: '',
+        valid: 1,
+        type: UserType[UserType.LIFELONG],
+        last_login_time: now,
+        expiration_date: now,
+        create_time: now,
+      });
+    } else {
+      await User.update({
+        last_login_time: now,
+      }, {
+        where: {
+          id: user.id
+        }
+      });
+    }
+
+    user.last_login_time = now;
+
+    ctx.body = {
+      id: user.id,
+      address: user.address,
+      smart_address: user.smart_address,
+      type: user.type,
+      last_login_time: user.last_login_time.getTime(),
+      expiration_time: user.expiration_time.getTime(),
+      create_time: user.create_time.getTime(),
+    }
   } catch (e) {
     ctx.session.siwe = null;
     ctx.session.nonce = null;

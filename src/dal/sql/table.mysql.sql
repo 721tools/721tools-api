@@ -187,7 +187,9 @@ CREATE TABLE `user` (
   `valid` tinyint NOT NULL DEFAULT 0,
   `type` varchar(16) NOT NULL DEFAULT '',
   `expiration_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `last_login_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  INDEX (`address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
