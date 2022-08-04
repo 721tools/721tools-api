@@ -1,11 +1,11 @@
-import { generateNonce, SiweMessage, ErrorTypes } from "siwe";
+import { HttpError } from '../model/http-error';
 import { ethers } from "ethers";
 
 export const requireLogin = async (ctx, next) => {
     if (!ctx.session.siwe) {
         ctx.status = 401;
         ctx.body = {
-        message: "You have to first sign_in"
+            error: HttpError[HttpError.UNAUTHORIZED]
         };
         return;
     }
@@ -16,14 +16,14 @@ export const requireMember = async (ctx, next) => {
     if (!ctx.session.siwe) {
         ctx.status = 401;
         ctx.body = {
-        message: "You have to first sign_in"
+            error: HttpError[HttpError.UNAUTHORIZED]
         };
         return;
     }
 
     const abi = [
         "function balanceOf(address) view returns (uint256)",
-      ];
+    ];
 
     const address = ctx.session.siwe.address;
 
@@ -37,9 +37,9 @@ export const requireMember = async (ctx, next) => {
 
     const balance = await nft.balanceOf(address);
     if (balance.toNumber() === 0) {
-        ctx.status = 401;
+        ctx.status = 403;
         ctx.body = {
-        message: "You are not a member"
+            error: HttpError[HttpError.UNAUTHORIZED]
         };
         return;
     }

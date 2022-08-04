@@ -1,7 +1,7 @@
 import { generateNonce, SiweMessage, ErrorTypes } from "siwe";
-import { ethers } from "ethers";
 import Router from "koa-router";
-import { requireLogin, requireMember} from "../helpers/auth_helper"
+import { HttpError } from '../model/http-error';
+import { requireLogin, requireMember } from "../helpers/auth_helper"
 
 const AuthRouter = new Router({});
 AuthRouter.get("/nonce", async (ctx) => {
@@ -10,8 +10,6 @@ AuthRouter.get("/nonce", async (ctx) => {
     nonce: ctx.session.nonce,
   };
 });
-
-
 
 AuthRouter.get("/me", requireLogin, async (ctx) => {
   ctx.body = {
@@ -22,9 +20,9 @@ AuthRouter.get("/me", requireLogin, async (ctx) => {
 AuthRouter.post("/login", async (ctx) => {
   try {
     if (!ctx.request.body.message) {
-      ctx.status = 422;
+      ctx.status = 400;
       ctx.body = {
-        message: "Expected prepareMessage object as body."
+        error: HttpError[HttpError.NOT_VALID_PRE_MESSAGE]
       }
       return;
     }
@@ -32,36 +30,39 @@ AuthRouter.post("/login", async (ctx) => {
     let message = new SiweMessage(ctx.request.body.message);
     const fields = await message.validate(ctx.request.body.signature);
     if (fields.nonce !== ctx.session.nonce) {
-      ctx.status = 422;
-      ctx.body= {
-        message: `Invalid nonce.`,
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.NOT_VALID_NONCE]
       };
       return;
     }
     ctx.session.siwe = fields;
     // ctx.session.cookie.expires = new Date(fields.expirationTime);
-    ctx.body= {}
+    ctx.body = {}
   } catch (e) {
     ctx.session.siwe = null;
     ctx.session.nonce = null;
     switch (e) {
       case ErrorTypes.EXPIRED_MESSAGE: {
-        ctx.status = 440;
+        ctx.status = 400;
         ctx.body = {
+          error: HttpError[HttpError.NOT_VALID_NONCE],
           message: e.message,
         }
         break;
       }
       case ErrorTypes.INVALID_SIGNATURE: {
-        ctx.status = 422;
+        ctx.status = 400;
         ctx.body = {
+          error: HttpError[HttpError.NOT_VALID_NONCE],
           message: e.message,
         }
         break;
       }
       default: {
-        ctx.status = 500;
+        ctx.status = 400;
         ctx.body = {
+          error: HttpError[HttpError.NOT_VALID_NONCE],
           message: e.message,
         }
         break;
