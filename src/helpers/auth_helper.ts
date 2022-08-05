@@ -78,10 +78,13 @@ export const requireMember = async (ctx, next) => {
 
 }
 
-export const isWhitelist = async (ctx) => {
-    const address = ctx.session.siwe.address;
-    const whitelistAddress = fs.readFileSync("address.txt", "utf8").split(/\r?\n/);
+export const addressIsWhitelist = async (address) => {
+    const whitelistAddress = fs.readFileSync(require.resolve('./address.txt'), "utf8").split(/\r?\n/);
     return whitelistAddress.includes(address);
+}
+
+export const isWhitelist = async (ctx) => {
+    return addressIsWhitelist(ctx.session.siwe.address);
 }
 
 

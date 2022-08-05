@@ -1,9 +1,11 @@
 import { generateNonce, SiweMessage, ErrorTypes } from "siwe";
 import Router from "koa-router";
+import axios from 'axios';
 import { HttpError } from '../model/http-error';
-import { requireLogin, requireWhitelist, requireMember, isWhitelist } from "../helpers/auth_helper"
+import { requireLogin, requireWhitelist, requireMember, isWhitelist, addressIsWhitelist } from "../helpers/auth_helper"
 import { User } from '../dal/db';
 import { UserType } from '../model/user-type';
+
 
 
 const AuthRouter = new Router({});
@@ -54,13 +56,22 @@ AuthRouter.post("/login", async (ctx) => {
     });
     const now = new Date();
     if (!user) {
+      let smart_address = '';
+      if (await addressIsWhitelist(address)) {
+        const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
+          address: address,
+        }, {
+          timeout: 10000
+        });
+        smart_address = response.data.data;
+      }
       user = await User.create({
         address: address,
-        smart_address: '',
+        smart_address: smart_address,
         valid: 1,
         type: UserType[UserType.LIFELONG],
         last_login_time: now,
-        expiration_date: now,
+        expiration_time: now,
         create_time: now,
       });
     } else {
