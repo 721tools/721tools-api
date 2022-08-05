@@ -58,12 +58,22 @@ AuthRouter.post("/login", async (ctx) => {
     if (!user) {
       let smart_address = '';
       if (await addressIsWhitelist(address)) {
-        const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
-          address: address,
-        }, {
-          timeout: 10000
-        });
-        smart_address = response.data.data;
+        try {
+          const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
+            address: address,
+          }, {
+            timeout: 10000
+          });
+          smart_address = response.data.data;
+        } catch (err) {
+          console.error(`${address} create smart wallet error`, err);
+          ctx.status = 500;
+          ctx.body = {
+            error: HttpError[HttpError.INTERNAL_SERVER_RROR],
+          }
+          return;
+        }
+
       }
       user = await User.create({
         address: address,
