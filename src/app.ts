@@ -1,9 +1,11 @@
 const Koa = require('koa');
 const httpRouter = require('./routes');
 const cors = require('koa2-cors');
-const session = require('koa-session');
+// const session = require('koa-session');
 const bodyParser = require('koa-body-parser');
 import { HttpError } from './model/http-error';
+const session = require('koa-generic-session');
+const redisStore = require('koa-redis');
 
 require('./config/env');
 
@@ -19,6 +21,7 @@ app.use(session({
   key: '721:sess',
   maxAge: 86400000,
   overwrite: true,
+  store: redisStore( {url: process.env.REDIS_URL})
 }, app));
 
 app.use(async (ctx, next) => {
