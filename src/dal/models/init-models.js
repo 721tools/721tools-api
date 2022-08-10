@@ -12,13 +12,13 @@ const _User = require('./user.js');
 
 
 
-const initModels = (sequelize) => {
-  const Contracts = _Contracts.init(sequelize, DataTypes);
-  const OpenseaCollections = _OpenseaCollections.init(sequelize, DataTypes);
-  const OpenseaItems = _OpenseaItems.init(sequelize, DataTypes);
-  const Orders = _Orders.init(sequelize, DataTypes);
-  const Tokens = _Tokens.init(sequelize, DataTypes);
-  const Transactions = _Transactions.init(sequelize, DataTypes);
+const initModels = (sequelize, assetsSequelize) => {
+  const Contracts = _Contracts.init(assetsSequelize, DataTypes);
+  const OpenseaCollections = _OpenseaCollections.init(assetsSequelize, DataTypes);
+  const OpenseaItems = _OpenseaItems.init(assetsSequelize, DataTypes);
+  const Orders = _Orders.init(assetsSequelize, DataTypes);
+  const Tokens = _Tokens.init(assetsSequelize, DataTypes);
+  const Transactions = _Transactions.init(assetsSequelize, DataTypes);
   const SmartBuys = _SmartBuys.init(sequelize, DataTypes);
   const User = _User.init(sequelize, DataTypes);
 
