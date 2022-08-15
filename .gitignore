@@ -3,3 +3,6 @@ dist/
 logs/
 npm-debug.log*
 .env
+.env.staging
+.env.production
+.env.development
