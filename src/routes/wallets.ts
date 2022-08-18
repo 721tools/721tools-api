@@ -37,6 +37,14 @@ const fetchItemsByOwner = async (owner: any, cursor: any) => {
   return data;
 }
 
+const parseTokenId = (tokenId) => {
+  let hex = parseInt(tokenId).toString(16);
+  if (hex.length % 2 == 1) {
+    hex = '0' + hex;
+  }
+  return Buffer.from(hex, 'hex');
+};
+
 const fetchNFTs = async (owner: any) => {
   let cursor = null;
   let hasNextPage = true;
@@ -48,7 +56,7 @@ const fetchNFTs = async (owner: any) => {
     } else {
       hasNextPage = false;
     }
-    Array.prototype.push.apply(items, _.map(data.assets.reverse(), (item: { token_id: any; collection: { slug: any; name: any; }; name: any; asset_contract: { schema_name: any; address: any; total_supply: any; }; image_url: any; last_sale: { payment_token: { eth_price: string; }; }; }) => ({
+    Array.prototype.push.apply(items, _.map(data.assets.reverse(), (item) => ({
       token_id: item.token_id,
       slug: item.collection.slug,
       name: item.name ? item.name : `${item.collection.name} #${item.token_id}`,
@@ -57,7 +65,7 @@ const fetchNFTs = async (owner: any) => {
       total_supply: item.asset_contract.total_supply,
       image: item.image_url ? item.image_url : "",
       floor_price: 0,
-      last_price: item.last_sale ? parseFloat(parseFloat(item.last_sale.payment_token.eth_price).toFixed(4)) : 0,
+      last_price: item.last_sale ? parseFloat(parseFloat(ethers.utils.formatUnits(item.last_sale.total_price, 'ether')).toFixed(4)) : 0,
       rank: 0
     })));
   }
@@ -94,7 +102,7 @@ const setRank = async (nfts) => {
     for (const nft of nfts) {
       selectTokens.push({
         "contract_address": Buffer.from(nft.contract.slice(2), 'hex'),
-        "token_id": Buffer.from(parseInt(nft.token_id).toString(16), 'hex')
+        "token_id": parseTokenId(nft.token_id)
       });
     }
     const itemsRes = await OpenseaItems.findAll({ where: { [Op.or]: selectTokens } });
