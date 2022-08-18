@@ -30,29 +30,13 @@ module.exports = class OpenseaCollections extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      contract_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-      },
       contract_address: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: ""
       },
       description: {
         type: DataTypes.TEXT,
         allowNull: true
-      },
-      from_index: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-      },
-      end_index: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
       },
       total_supply: {
         type: DataTypes.INTEGER,
@@ -140,24 +124,24 @@ module.exports = class OpenseaCollections extends Model {
         defaultValue: 0
       },
       one_day_volume: {
-        type: DataTypes.STRING(32),
+        type: DataTypes.DECIMAL(12, 4),
         allowNull: false,
-        defaultValue: ""
+        defaultValue: 0.0000
       },
       thirty_day_volume: {
-        type: DataTypes.STRING(32),
+        type: DataTypes.DECIMAL(12, 4),
         allowNull: false,
-        defaultValue: ""
+        defaultValue: 0.0000
       },
       seven_day_volume: {
-        type: DataTypes.STRING(32),
+        type: DataTypes.DECIMAL(12, 4),
         allowNull: false,
-        defaultValue: ""
+        defaultValue: 0.0000
       },
       total_volume: {
-        type: DataTypes.STRING(32),
+        type: DataTypes.DECIMAL(12, 4),
         allowNull: false,
-        defaultValue: ""
+        defaultValue: 0.0000
       },
       market_cap: {
         type: DataTypes.DECIMAL(12, 4),
@@ -165,23 +149,23 @@ module.exports = class OpenseaCollections extends Model {
         defaultValue: 0.0000
       },
       floor_price: {
-        type: DataTypes.STRING(32),
+        type: DataTypes.DECIMAL(12, 4),
         allowNull: false,
-        defaultValue: ""
+        defaultValue: 0.0000
       },
       created_date: {
         type: DataTypes.STRING(32),
         allowNull: false,
         defaultValue: ""
       },
-      token: {
-        type: DataTypes.STRING(256),
-        allowNull: false,
-        defaultValue: ""
-      },
       traits: {
         type: DataTypes.JSON,
         allowNull: true
+      },
+      cursor: {
+        type: DataTypes.STRING(32),
+        allowNull: false,
+        defaultValue: ""
       },
       create_time: {
         type: DataTypes.DATE(6),
@@ -212,7 +196,14 @@ module.exports = class OpenseaCollections extends Model {
           using: "BTREE",
           fields: [
             { name: "contract_address" },
-            { name: "token" },
+          ]
+        },
+        {
+          name: "slug",
+          unique: true,
+          using: "BTREE",
+          fields: [
+            { name: "slug" },
           ]
         },
       ]

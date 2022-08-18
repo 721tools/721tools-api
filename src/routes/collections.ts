@@ -225,6 +225,8 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
     variables: variables
   });
 
+  console.log(res)
+
   let events = [];
   if (res.data.assetEvents.edges.length > 0) {
     Array.prototype.push.apply(events, _.map(res.data.assetEvents.edges, (item) => ({

@@ -30,7 +30,8 @@ const fetchItemsByOwner = async (owner: any, cursor: any) => {
     httpHeader: [
       'accept: application/json',
       'content-type: application/json',
-      'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.0.0 Safari/537.36',
+      'user-agent: PostmanRuntime/7.26.8',
+      'X-API-KEY: 2f6f419a083c46de9d83ce3dbe7db601',
     ]
   });
   return data;
@@ -65,19 +66,19 @@ const fetchNFTs = async (owner: any) => {
 
 const setFloorPrice = async (nfts) => {
   if (nfts && nfts.length > 0) {
-    const slugs = [...new Set(nfts.map(item => item.slug))];
+    const contractAddresses = [...new Set(nfts.map(item => Buffer.from(item.contract.slice(2), 'hex')))];
     const collectionsRes = await OpenseaCollections.findAll({
       where: {
-        slug: slugs
+        contract_address: contractAddresses
       }
     });
 
     if (collectionsRes && collectionsRes.length > 0) {
-      const collectionMap = new Map<string, typeof OpenseaCollections>(collectionsRes.map((item: { slug: string; dataValues: any; }) => [item.slug, item.dataValues]));
+      const collectionMap = new Map<string, typeof OpenseaCollections>(collectionsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex'), item.dataValues]));
       for (let index in nfts) {
         const nft = nfts[index];
-        if (collectionMap.has(nft.slug)) {
-          const collection = collectionMap.get(nft.slug);
+        if (collectionMap.has(nft.contract)) {
+          const collection = collectionMap.get(nft.contract);
           nft.floor_price = parseFloat(parseFloat(collection.floor_price).toFixed(4));
         }
         nfts[index] = nft;
@@ -92,18 +93,18 @@ const setRank = async (nfts) => {
     const selectTokens = [];
     for (const nft of nfts) {
       selectTokens.push({
-        "contract_address": nft.contract,
-        "token_address": nft.token_id
+        "contract_address": Buffer.from(nft.contract.slice(2), 'hex'),
+        "token_id": Buffer.from(parseInt(nft.token_id).toString(16), 'hex')
       });
     }
     const itemsRes = await OpenseaItems.findAll({ where: { [Op.or]: selectTokens } });
 
     if (itemsRes && itemsRes.length > 0) {
-      const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item: { collection_slug: string; token_address: string; dataValues: any; }) => [item.collection_slug + item.token_address, item.dataValues]));
+      const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex') + parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
       for (let index in nfts) {
         const nft = nfts[index];
-        if (itemMap.has(nft.slug + nft.token_id)) {
-          const item = itemMap.get(nft.slug + nft.token_id);
+        if (itemMap.has(nft.contract + nft.token_id)) {
+          const item = itemMap.get(nft.contract + nft.token_id);
           nft.rank = item.traits_rank;
         }
         nfts[index] = nft;

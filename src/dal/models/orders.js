@@ -15,11 +15,6 @@ module.exports = class Orders extends Model {
         allowNull: false,
         defaultValue: 0
       },
-      collection_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-      },
       collection_name: {
         type: DataTypes.STRING(128),
         allowNull: false,
@@ -34,30 +29,17 @@ module.exports = class Orders extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      contract_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-      },
       contract_address: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: ""
       },
       token_id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: 0
-      },
-      token_address: {
-        type: DataTypes.STRING(128),
-        allowNull: false,
-        defaultValue: ""
       },
       owner_address: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: ""
       },
       from: {
         type: DataTypes.TINYINT,
@@ -70,9 +52,9 @@ module.exports = class Orders extends Model {
         defaultValue: 0
       },
       price: {
-        type: DataTypes.STRING(32),
+        type: DataTypes.DECIMAL(12, 4),
         allowNull: false,
-        defaultValue: "0"
+        defaultValue: 0.0000
       },
       order_created_date: {
         type: DataTypes.DATE(6),

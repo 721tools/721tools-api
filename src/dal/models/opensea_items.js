@@ -11,14 +11,8 @@ module.exports = class OpenseaItems extends Model {
         primaryKey: true
       },
       token_id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: 0
-      },
-      token_address: {
-        type: DataTypes.STRING(128),
-        allowNull: false,
-        defaultValue: ""
       },
       asset_id: {
         type: DataTypes.INTEGER,
@@ -27,11 +21,6 @@ module.exports = class OpenseaItems extends Model {
       },
       status: {
         type: DataTypes.TINYINT,
-        allowNull: false,
-        defaultValue: 0
-      },
-      collection_id: {
-        type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0
       },
@@ -49,15 +38,9 @@ module.exports = class OpenseaItems extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      contract_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 0
-      },
       contract_address: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: ""
       },
       name: {
         type: DataTypes.STRING(64),
@@ -65,9 +48,8 @@ module.exports = class OpenseaItems extends Model {
         defaultValue: ""
       },
       owner_address: {
-        type: DataTypes.STRING(64),
+        type: DataTypes.STRING.BINARY,
         allowNull: false,
-        defaultValue: ""
       },
       image_url: {
         type: DataTypes.STRING(256),
@@ -122,7 +104,7 @@ module.exports = class OpenseaItems extends Model {
           using: "BTREE",
           fields: [
             { name: "contract_address" },
-            { name: "token_address" },
+            { name: "token_id" },
           ]
         },
       ]
