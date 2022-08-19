@@ -88,6 +88,7 @@ const setFloorPrice = async (nfts) => {
         if (collectionMap.has(nft.contract)) {
           const collection = collectionMap.get(nft.contract);
           nft.floor_price = parseFloat(parseFloat(collection.floor_price).toFixed(4));
+          nft.total_supply = collection.total_supply;
         }
         nfts[index] = nft;
       }
