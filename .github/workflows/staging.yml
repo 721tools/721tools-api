@@ -1,0 +1,53 @@
+name: staging-deploy
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "staging" ]
+  pull_request:
+    branches: [ "staging" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    env:
+      GOPRIVATE: github.com/721tools/stream-api-go
+      GH_ACCESS_TOKEN: ${{ secrets.DEV_GAO_GITHUB_TOKEN_FOR_PRIVATE_REPO }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+      - name: setup go
+        uses: actions/setup-node@v3
+        with: 
+          node-version: 16.14
+      # Runs a set of commands using the runners shell
+      - name: run node version
+        run: node -v
+      - name: rsync build file to target server
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEV_1_DEPLOY_PRIVATE_KEY }}
+          ARGS: "-rltgoDzvO"
+          SOURCE: ""
+          REMOTE_HOST: 18.162.140.50
+          REMOTE_USER: deploy
+          TARGET: /home/deploy/deploy-for-ubuntu/721tools-api/
+          EXCLUDE: /node_modules/
+      - name: restart service from remote server
+        uses: appleboy/ssh-action@master
+        with:
+          host: 18.162.140.50
+          username: deploy
+          key: ${{ secrets.DEV_1_DEPLOY_PRIVATE_KEY }}
+          port: 22
+          script: sh /home/deploy/deploy-for-ubuntu/restart.sh
