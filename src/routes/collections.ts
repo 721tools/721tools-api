@@ -212,13 +212,14 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
   if (res.asset_events.length > 0) {
     Array.prototype.push.apply(events, _.map(res.asset_events, (item) => ({
       event_timestamp: new Date(item.event_timestamp).getTime(),
+      asset: item.asset,
       event_type: item.event_type,
       from_account: item.from_account,
       total_price: item.total_price,
       payment_token: item.payment_token,
       transaction: item.transaction,
       quantity: item.quantity,
-      seller: item.seller
+      seller: item.seller,
     })));
   }
   ctx.body = events;
