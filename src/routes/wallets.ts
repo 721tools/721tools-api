@@ -1,7 +1,7 @@
 import Router from 'koa-router';
 import { ethers } from "ethers";
 import axios from 'axios';
-import { curly } from 'node-libcurl';
+import { gotScraping } from 'got-scraping';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
@@ -23,18 +23,14 @@ const limiterQueue = new RateLimiterQueue(limiterFlexible);
 
 const fetchItemsByOwner = async (owner: any, cursor: any) => {
   await limiterQueue.removeTokens(1);
-  const url = `https://api.opensea.io/api/v1/assets?limit=200&owner=${owner}&order_direction=desc${cursor ? `&cursor=${cursor}` : ""}`;
-  const { data } = await curly.get(url, {
-    proxy: process.env.PROXY,
-    sslVerifyPeer: 0,
-    httpHeader: [
-      'accept: application/json',
-      'content-type: application/json',
-      'user-agent: PostmanRuntime/7.26.8',
-      'X-API-KEY: 2f6f419a083c46de9d83ce3dbe7db601',
-    ]
+  const url = `https://api.opensea.io/api/v1/assets?limit=200&owner=${owner}&order_direction=desc${cursor ? `&cursor=${cursor}` : ""}&format=json`;
+  const response = await gotScraping({
+    url: url,
+    headers: {
+      'content-type': 'application/json',
+    },
   });
-  return data;
+  return JSON.parse(response.body);
 }
 
 const parseTokenId = (tokenId) => {
