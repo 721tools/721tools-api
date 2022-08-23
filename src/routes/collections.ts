@@ -87,19 +87,22 @@ CollectionsRouter.get('/', async (ctx) => {
 
 
 const fetchEvents = async (contractAddress, eventType, occurredAfter) => {
+  const openseaKeys = process.env.OPENSEA_API_KEYS.split(',');
+  const openseaKey = _.sample(openseaKeys);
   const url = `https://api.opensea.io/api/v1/events?asset_contract_address=${contractAddress}${eventType ? `&event_type=${eventType}` : ""}${occurredAfter ? `&occurred_after=${occurredAfter}` : ""}&format=json`;
   const response = await gotScraping({
     url: url,
-    context: {
-      proxyUrl: process.env.PROXY,
-    },
     headers: {
       'content-type': 'application/json',
-      'user-agent': 'PostmanRuntime/7.26.8',
-      'x-api-key': '2f6f419a083c46de9d83ce3dbe7db601',
+      'x-api-key': openseaKey,
     },
   });
-  return JSON.parse(response.body);
+  try {
+    return JSON.parse(response.body);
+  } catch (error) {
+    console.log(`fetch event using api-key ${openseaKey} error`, error);
+    return [];
+  }
 }
 
 CollectionsRouter.get('/:slug', async (ctx) => {
