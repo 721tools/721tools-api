@@ -220,6 +220,9 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       transaction: item.transaction,
       quantity: item.quantity,
       seller: item.seller,
+      is_private: item.is_private,
+      duration: item.duration,
+      bid_amount: item.bid_amount,
     })));
   }
   ctx.body = events;
