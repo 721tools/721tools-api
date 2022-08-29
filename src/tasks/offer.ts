@@ -67,7 +67,6 @@ async function main(): Promise<void> {
         }
 
         const wethAllowance = await getWethAllowance(kmsSigner, user.smart_address);
-        console.log(wethAllowance, ethers.utils.formatEther(wethAllowance), ethers.utils.parseEther(smartBuy.price), smartBuy.price, wethAllowance.lt(ethers.utils.parseEther(smartBuy.price)))
         if (wethAllowance.lte(BigNumber.from(0))) {
             try {
                 const tx = await approveWeth(kmsSigner);
@@ -83,12 +82,10 @@ async function main(): Promise<void> {
                 continue;
             }
         } else if (wethAllowance.lt(ethers.utils.parseEther(smartBuy.price))) {
-            console.log(wethAllowance, smartBuy.price, wethAllowance.lt(ethers.utils.parseEther(smartBuy.price)));
             continue;
         }
-        console.log(2222);
         if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-            const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, 1, smartBuy.price)
+            const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, smartBuy.price, 1)
             if (preActionResult.errors) {
                 console.log(`Failed to make pre collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
                 continue;
@@ -98,7 +95,8 @@ async function main(): Promise<void> {
                 console.log(`Failed to make post collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
                 continue;
             }
-            console.log(JSON.stringify(postActionResult));
+
+            console.log(`Make collection offer for  smart buy ${smartBuy.id} success`);
         }
     }
 }

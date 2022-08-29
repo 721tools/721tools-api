@@ -34,7 +34,8 @@ export const preCreateCollectionOffer = async (kmsSigner, smartAddress, contract
         return JSON.parse(response.body);
     }
     const data = JSON.parse(response.body);
-    const method = data.data.blockchain.createCollectionOfferActions[1].method;
+    const createCollectionOfferActions = data.data.blockchain.createCollectionOfferActions;
+    const method = createCollectionOfferActions.length > 1 ? createCollectionOfferActions[1].method : createCollectionOfferActions[0].method;
     const eip712Hash = TypedDataUtils.eip712Hash(JSON.parse(method.clientMessage), SignTypedDataVersion.V4);
     const clientSignature = await kmsSigner._signDigest(eip712Hash.toString('hex'));
     if (!clientSignature) {
@@ -62,7 +63,6 @@ export const postCreateCollectionOffer = async (preData) => {
         headers: {
             "content-type": "application/json",
             "x-signed-query": "7a636c506dff8e9ca92165555c42d3902c94b43de611d160991d8f2a123aa886",
-            // "x-viewer-address": smartAddress,
         }
     });
     if (response.statusCode != 200) {
