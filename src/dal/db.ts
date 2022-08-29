@@ -29,12 +29,6 @@ const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASS, {
   logging: false,
 })
 
-// sequelize.authenticate().then(() => {
-//   console.log('Connection has been established successfully.');
-// }).catch(err => {
-//   console.error('Unable to connect to the database:', err);
-// });
-
 // todo:
 // https://github.com/sequelize/sequelize-auto/blob/c515542cf00f0cb4167327765b9f8cf67893a39a/src/auto-generator.ts#L382
 // 生成 current_timestamp(6) 出错
@@ -45,6 +39,7 @@ export const {
   Orders,
   Tokens,
   Transactions,
-  SmartBuys,
   User,
+  SmartBuys,
+  SmartBuyLogs,
 } = initModels(sequelize, assetsSequelize)

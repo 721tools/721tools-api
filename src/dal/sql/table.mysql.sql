@@ -48,3 +48,14 @@ CREATE TABLE `smart_buys` (
   INDEX (`contract_address`, `status`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+DROP TABLE IF EXISTS `smart_buy_logs`;
+CREATE TABLE `smart_buy_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL DEFAULT 0,
+  `contract_address` varchar(64) NOT NULL DEFAULT '',
+  `smart_buy_id` int NOT NULL DEFAULT 0,
+  `type` varchar(16) NOT NULL DEFAULT '',
+  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  INDEX (`user_id`, `contract_address`, `smart_buy_id`, `type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
