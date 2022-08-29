@@ -1,10 +1,13 @@
 import Sequelize from 'sequelize';
+import { ethers } from "ethers";
 
 import { SmartBuys, SmartBuyLogs, User } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
 import { UserType } from '../model/user-type';
 import { preCreateCollectionOffer, postCreateCollectionOffer } from '../helpers/opensea/colletion_offer';
+import { KmsSigner } from '../helpers/kms/kms-signer';
+import { getWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 
 
 async function main(): Promise<void> {
@@ -31,6 +34,9 @@ async function main(): Promise<void> {
         if (user.valid == 0) {
             continue;
         }
+        if (!user.smart_address) {
+            continue;
+        }
 
         if (user.type !== UserType[UserType.LIFELONG] && user.expiration_time < new Date()) {
             continue;
@@ -52,9 +58,19 @@ async function main(): Promise<void> {
             continue;
         }
 
-        // @todo judge balance first
+        const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
+        const kmsSigner = new KmsSigner(user.address, provider);
+
+        const wethBalance = ethers.utils.formatEther(await getWethBalance(kmsSigner, user.smart_address));
+        if (wethBalance < smartBuy.price) {
+            continue;
+        }
+
+        // @todo judge weth allowance first
+        const wethAllowance = getWethAllowance(kmsSigner, user.smart_address);
+
         if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-            const preActionResult = await preCreateCollectionOffer(user.address, user.smart_address, smartBuy.contract_address, smartBuy.slug, 1, smartBuy.price)
+            const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, 1, smartBuy.price)
             if (preActionResult.errors) {
                 console.log(`Failed to make pre collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
                 continue;
