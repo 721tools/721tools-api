@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 
 import { SmartBuys, SmartBuyLogs, User } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
@@ -7,7 +7,7 @@ import { SmartBuyType } from '../model/smart-buy-type';
 import { UserType } from '../model/user-type';
 import { preCreateCollectionOffer, postCreateCollectionOffer } from '../helpers/opensea/colletion_offer';
 import { KmsSigner } from '../helpers/kms/kms-signer';
-import { getWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
+import { getWethAllowance, getWethBalance, approveWeth } from '../helpers/opensea/erc20_utils';
 
 
 async function main(): Promise<void> {
@@ -61,14 +61,32 @@ async function main(): Promise<void> {
         const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
         const kmsSigner = new KmsSigner(user.address, provider);
 
-        const wethBalance = ethers.utils.formatEther(await getWethBalance(kmsSigner, user.smart_address));
-        if (wethBalance < smartBuy.price) {
+        const wethBalance = await getWethBalance(kmsSigner, user.smart_address);
+        if (wethBalance.lt(ethers.utils.parseEther(smartBuy.price))) {
             continue;
         }
 
-        // @todo judge weth allowance first
-        const wethAllowance = getWethAllowance(kmsSigner, user.smart_address);
-
+        const wethAllowance = await getWethAllowance(kmsSigner, user.smart_address);
+        console.log(wethAllowance, ethers.utils.formatEther(wethAllowance), ethers.utils.parseEther(smartBuy.price), smartBuy.price, wethAllowance.lt(ethers.utils.parseEther(smartBuy.price)))
+        if (wethAllowance.lte(BigNumber.from(0))) {
+            try {
+                const tx = await approveWeth(kmsSigner);
+                const receipt = await tx.wait();
+                if (receipt.status == 0) {
+                    console.log(`${user.smart_address} approve weth error`, receipt);
+                    continue;
+                } else {
+                    console.log(`${user.smart_address} approve weth success`);
+                }
+            } catch (error) {
+                console.log(`${user.smart_address} approve weth error`, error);
+                continue;
+            }
+        } else if (wethAllowance.lt(ethers.utils.parseEther(smartBuy.price))) {
+            console.log(wethAllowance, smartBuy.price, wethAllowance.lt(ethers.utils.parseEther(smartBuy.price)));
+            continue;
+        }
+        console.log(2222);
         if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
             const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, 1, smartBuy.price)
             if (preActionResult.errors) {
