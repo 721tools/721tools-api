@@ -20,6 +20,11 @@ module.exports = class SmartBuyLogs extends Model {
         allowNull: false,
         defaultValue: ""
       },
+      smart_buy_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
       type: {
         type: DataTypes.STRING(16),
         allowNull: false,
