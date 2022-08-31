@@ -9,7 +9,6 @@ import { preCreateCollectionOffer, postCreateCollectionOffer } from '../helpers/
 import { KmsSigner } from '../helpers/kms/kms-signer';
 import { getWethAllowance, getWethBalance, approveWeth } from '../helpers/opensea/erc20_utils';
 
-
 async function main(): Promise<void> {
     while (true) {
         const smartBuys = await SmartBuys.findAll({
@@ -85,8 +84,11 @@ async function main(): Promise<void> {
             } else if (wethAllowance.lt(ethers.utils.parseEther(smartBuy.price))) {
                 continue;
             }
+
+
+            // collection offer
             if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-                const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, smartBuy.price, 1)
+                const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, null, smartBuy.price, 1)
                 if (preActionResult.errors) {
                     console.log(`Failed to make pre collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
                     continue;
@@ -97,13 +99,45 @@ async function main(): Promise<void> {
                     continue;
                 }
 
-                console.log(`Make collection offer for  smart buy ${smartBuy.id} success`);
+                console.log(`Make collection offer for smart buy ${smartBuy.id} success`);
                 await SmartBuyLogs.create({
                     user_id: user.id,
                     contract_address: smartBuy.contract_address,
                     smart_buy_id: smartBuy.id,
                     type: SmartBuyType[SmartBuyType.COLLECTION_OFFER]
                 });
+                continue;
+            }
+
+            // collection offer by traits
+            if (smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+                for (const traitKey of Object.keys(smartBuy.traits)) {
+                    for (const traitValue of smartBuy.traits[traitKey]) {
+                        const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, {
+                            name: traitKey,
+                            value: traitValue
+                        }, smartBuy.price, 1)
+                        if (preActionResult.errors) {
+                            console.log(`Failed to make pre collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
+                            continue;
+                        }
+                        const postActionResult = await postCreateCollectionOffer(preActionResult);
+                        if (postActionResult.errors) {
+                            console.log(`Failed to make post collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
+                            continue;
+                        }
+                        console.log(`Make collection offer by trait ${traitKey}:${traitValue} for smart buy ${smartBuy.id} success`);
+                    }
+                }
+                console.log(`Make collection offer by trait ${JSON.stringify(smartBuy.traits)} for smart buy ${smartBuy.id} success`);
+
+                await SmartBuyLogs.create({
+                    user_id: user.id,
+                    contract_address: smartBuy.contract_address,
+                    smart_buy_id: smartBuy.id,
+                    type: SmartBuyType[SmartBuyType.COLLECTION_OFFER]
+                });
+                continue;
             }
         }
     }
