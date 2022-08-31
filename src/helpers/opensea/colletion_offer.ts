@@ -27,7 +27,6 @@ export const preCreateCollectionOffer = async (kmsSigner, smartAddress, contract
             "content-type": "application/json",
             "x-signed-query": "bd4dfba8f80ce398f7d488a24dff19414e164c36f5ebfa5099701405d7f4ea02",
             "x-viewer-address": smartAddress,
-
         }
     });
     if (response.statusCode != 200) {
@@ -73,3 +72,31 @@ export const postCreateCollectionOffer = async (preData) => {
     }
     return JSON.parse(response.body);
 }
+
+export const queryCollectionOfferMultiModalBase = async (slug) => {
+    const collectionOfferMultiModalBaseQuery = {
+        id: "CollectionOfferMultiModalBaseQuery",
+        query: "query CollectionOfferMultiModalBaseQuery(\n  $collection: CollectionSlug!\n  $chain: ChainScalar!\n) {\n  collection(collection: $collection) {\n    slug\n    verificationStatus\n    ...OfferModal_collectionData\n    id\n  }\n  tradeLimits(chain: $chain) {\n    ...OfferModal_tradeLimits\n  }\n}\n\nfragment OfferModal_collectionData on CollectionType {\n  isTraitOffersEnabled\n  name\n  slug\n  relayId\n  statsV2 {\n    floorPrice {\n      usd\n      symbol\n    }\n  }\n  ...useOfferModalAdapter_collection\n}\n\nfragment OfferModal_tradeLimits on TradeLimitsType {\n  minimumBidUsdPrice\n  ...useOfferModalAdapter_tradeLimits\n}\n\nfragment useOfferModalAdapter_collection on CollectionType {\n  relayId\n  slug\n  paymentAssets {\n    relayId\n    symbol\n    chain {\n      identifier\n    }\n    asset {\n      usdSpotPrice\n      decimals\n      id\n    }\n    isNative\n    ...utils_PaymentAssetOption\n    id\n  }\n  representativeAsset {\n    assetContract {\n      address\n      chain\n      id\n    }\n    id\n  }\n  assetContracts(first: 2) {\n    edges {\n      node {\n        address\n        chain\n        id\n      }\n    }\n  }\n}\n\nfragment useOfferModalAdapter_tradeLimits on TradeLimitsType {\n  minimumBidUsdPrice\n}\n\nfragment utils_PaymentAssetOption on PaymentAssetType {\n  relayId\n  symbol\n  asset {\n    relayId\n    displayImageUrl\n    usdSpotPrice\n    decimals\n    id\n  }\n}\n",
+        variables: {
+            chain: process.env.NETWORK === 'rinkeby' ? "RINKEBY" : "ETHEREUM",
+            collection: slug
+        }
+    };
+    const response = await gotScraping({
+        url: `https://${process.env.NETWORK === 'rinkeby' ? "testnets." : ""}opensea.io/__api/graphql/`,
+        body: JSON.stringify(collectionOfferMultiModalBaseQuery),
+        method: 'POST',
+        headers: {
+            "content-type": "application/json",
+            "x-signed-query": "be6d987c1b4dc0f257a3f20eac0e0e92cfcc3a6c775a56a7f8a68b4b0053332f",
+        }
+    });
+    if (response.statusCode != 200) {
+        return false;
+    }
+    const collection = JSON.parse(response.body).data.collection;
+    if (collection) {
+        return collection.isTraitOffersEnabled;
+    }
+    return false;
+};
