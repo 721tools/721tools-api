@@ -1,7 +1,7 @@
 import Sequelize from 'sequelize';
 import { ethers, BigNumber } from "ethers";
 
-import { SmartBuys, SmartBuyLogs, User } from '../dal/db';
+import { SmartBuys, SmartBuyLogs, User, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
 import { UserType } from '../model/user-type';
@@ -110,38 +110,62 @@ async function main(): Promise<void> {
             }
 
             // collection offer by traits
+            let tokenIds = [];
             if (smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-                const isTraitOffersEnabled = await queryCollectionOfferMultiModalBase(smartBuy.slug);
-                if (isTraitOffersEnabled) {
-                    for (const traitKey of Object.keys(smartBuy.traits)) {
-                        for (const traitValue of smartBuy.traits[traitKey]) {
-                            const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, {
-                                name: traitKey,
-                                value: traitValue
-                            }, smartBuy.price, 1)
-                            if (preActionResult.errors) {
-                                console.log(`Failed to make pre collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
-                                continue;
+                const traitKeys = Object.keys(smartBuy.traits);
+                if (traitKeys.length == 1) {
+                    const isTraitOffersEnabled = await queryCollectionOfferMultiModalBase(smartBuy.slug);
+                    if (isTraitOffersEnabled) {
+                        for (const traitKey of traitKeys) {
+                            for (const traitValue of smartBuy.traits[traitKey]) {
+                                const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, {
+                                    name: traitKey,
+                                    value: traitValue
+                                }, smartBuy.price, 1)
+                                if (preActionResult.errors) {
+                                    console.log(`Failed to make pre collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
+                                    continue;
+                                }
+                                const postActionResult = await postCreateCollectionOffer(preActionResult);
+                                if (postActionResult.errors) {
+                                    console.log(`Failed to make post collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
+                                    continue;
+                                }
+                                console.log(`Make collection offer by trait ${traitKey}:${traitValue} for smart buy ${smartBuy.id} success`);
                             }
-                            const postActionResult = await postCreateCollectionOffer(preActionResult);
-                            if (postActionResult.errors) {
-                                console.log(`Failed to make post collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
-                                continue;
-                            }
-                            console.log(`Make collection offer by trait ${traitKey}:${traitValue} for smart buy ${smartBuy.id} success`);
                         }
-                    }
-                    console.log(`Make collection offer by trait ${JSON.stringify(smartBuy.traits)} for smart buy ${smartBuy.id} success`);
 
-                    await SmartBuyLogs.create({
-                        user_id: user.id,
-                        contract_address: smartBuy.contract_address,
-                        smart_buy_id: smartBuy.id,
-                        type: SmartBuyType[SmartBuyType.COLLECTION_OFFER]
-                    });
+                        await SmartBuyLogs.create({
+                            user_id: user.id,
+                            contract_address: smartBuy.contract_address,
+                            smart_buy_id: smartBuy.id,
+                            type: SmartBuyType[SmartBuyType.COLLECTION_OFFER]
+                        });
+
+                        continue;
+                    }
                 }
-                continue;
+
+
+                const items = await OpenseaItems.findAll({
+                    where: {
+                        contract_address: Buffer.from(smartBuy.contract_address.slice(2), 'hex')
+                    }
+                });
+                for (const item of items) {
+                    if (item.trait) {
+
+                    }
+                }
+
+
+
             }
+
+            // offer by rank
+
+
+            // offer by token id
         }
     }
 }
