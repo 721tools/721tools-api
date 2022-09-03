@@ -186,13 +186,22 @@ async function main(): Promise<void> {
                 }
                 if (tokenIds.size > 0) {
                     await singleBid(kmsSigner, smartBuy, user, tokenIds);
+                    continue;
                 }
             }
 
             // offer by rank
+            // 所有 items 都有 rank，items 数量大于等于 total_supply
 
 
             // offer by token id
+            if (smartBuy.token_ids) {
+                const tokenIds = JSON.parse(smartBuy.token_ids);
+                if (tokenIds.length > 0) {
+                    await singleBid(kmsSigner, smartBuy, user, smartBuy.token_ids);
+                }
+            }
+            continue
         }
     }
 }
