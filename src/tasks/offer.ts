@@ -2,7 +2,7 @@ import Sequelize from 'sequelize';
 import { ethers, BigNumber } from "ethers";
 import _ from 'underscore';
 
-import { SmartBuys, SmartBuyLogs, User, OpenseaItems } from '../dal/db';
+import { SmartBuys, SmartBuyLogs, User, OpenseaCollections, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
 import { UserType } from '../model/user-type';
@@ -185,20 +185,62 @@ async function main(): Promise<void> {
                     }
                 }
                 if (tokenIds.size > 0) {
-                    await singleBid(kmsSigner, smartBuy, user, tokenIds);
+                    await singleBid(kmsSigner, smartBuy, user, tokenIds, []);
                     continue;
                 }
             }
 
             // offer by rank
             // 所有 items 都有 rank，items 数量大于等于 total_supply
+            if (smartBuy.min_rank > 0 || smartBuy.max_rank > 0) {
+                if (smartBuy.max_rank < smartBuy.min_rank) {
+                    // todo change status to error
+                    continue;
+                }
+
+                const collection = await OpenseaCollections.findOne({
+                    where: {
+                        contract_address: parseAddress(smartBuy.contract_address)
+                    }
+                });
+                if (!collection) {
+                    continue;
+                }
+                if (collection.status == 1) {
+                    continue;
+                }
+                const itemsCount = await OpenseaItems.count({
+                    where: {
+                        contract_address: collection.contract_address,
+                        traits_rank: {
+                            [Sequelize.Op.gt]: 0
+                        },
+                    },
+                });
+                if (itemsCount < collection.total_supply) {
+                    continue;
+                }
+                const items = await OpenseaItems.findAll({
+                    where: {
+                        contract_address: collection.contract_address,
+                        traits_rank: {
+                            [Sequelize.Op.gte]: smartBuy.max_rank,
+                            [Sequelize.Op.lte]: smartBuy.min_rank
+                        },
+                    },
+                });
+                if (items.length > 0) {
+                    await singleBid(kmsSigner, smartBuy, user, [], items);
+                }
+
+            }
 
 
             // offer by token id
             if (smartBuy.token_ids) {
                 const tokenIds = JSON.parse(smartBuy.token_ids);
                 if (tokenIds.length > 0) {
-                    await singleBid(kmsSigner, smartBuy, user, smartBuy.token_ids);
+                    await singleBid(kmsSigner, smartBuy, user, smartBuy.token_ids, []);
                 }
             }
             continue
@@ -206,13 +248,15 @@ async function main(): Promise<void> {
     }
 }
 
-const singleBid = async (kmsSigner, smartBuy, user, tokenIds) => {
-    const items = await OpenseaItems.findAll({
-        where: {
-            contract_address: parseAddress(smartBuy.contract_address),
-            token_id: _.map(tokenIds, tokenId => parseTokenId(tokenId))
-        }
-    });
+const singleBid = async (kmsSigner, smartBuy, user, tokenIds, items) => {
+    if (!items) {
+        items = await OpenseaItems.findAll({
+            where: {
+                contract_address: parseAddress(smartBuy.contract_address),
+                token_id: _.map(tokenIds, tokenId => parseTokenId(tokenId))
+            }
+        });
+    }
     for (const item of items) {
         const preActionResult = await preCreateOffer(kmsSigner, user.smart_address, item.asset_id, smartBuy.price, 1)
         if (preActionResult.errors) {
