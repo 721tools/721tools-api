@@ -8,6 +8,8 @@ import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
 import { OpenseaCollections, OpenseaItems } from '../dal/db';
 import genericErc20Abi from "../abis/ERC20.json";
+import { parseTokenId, parseAddress } from "../helpers/binary_utils";
+
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.ETH_RPC_URL);
 const erc20Contract = new ethers.Contract("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", genericErc20Abi, provider);
@@ -33,13 +35,6 @@ const fetchItemsByOwner = async (owner: any, cursor: any) => {
   return JSON.parse(response.body);
 }
 
-const parseTokenId = (tokenId) => {
-  let hex = parseInt(tokenId).toString(16);
-  if (hex.length % 2 == 1) {
-    hex = '0' + hex;
-  }
-  return Buffer.from(hex, 'hex');
-};
 
 const fetchNFTs = async (owner: any) => {
   let cursor = null;
@@ -70,7 +65,7 @@ const fetchNFTs = async (owner: any) => {
 
 const setFloorPrice = async (nfts) => {
   if (nfts && nfts.length > 0) {
-    const contractAddresses = [...new Set(nfts.map(item => Buffer.from(item.contract.slice(2), 'hex')))];
+    const contractAddresses = [...new Set(nfts.map(item => parseAddress(item.contract)))];
     const collectionsRes = await OpenseaCollections.findAll({
       where: {
         contract_address: contractAddresses
@@ -98,7 +93,7 @@ const setRank = async (nfts) => {
     const selectTokens = [];
     for (const nft of nfts) {
       selectTokens.push({
-        "contract_address": Buffer.from(nft.contract.slice(2), 'hex'),
+        "contract_address": parseAddress(nft.contract),
         "token_id": parseTokenId(nft.token_id)
       });
     }

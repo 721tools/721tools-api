@@ -1,11 +1,15 @@
 import Sequelize from 'sequelize';
 import { ethers, BigNumber } from "ethers";
+import _ from 'underscore';
 
 import { SmartBuys, SmartBuyLogs, User, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
 import { UserType } from '../model/user-type';
 import { preCreateCollectionOffer, postCreateCollectionOffer, queryCollectionOfferMultiModalBase } from '../helpers/opensea/colletion_offer';
+import { preCreateOffer } from '../helpers/opensea/bid';
+import { parseTokenId, parseAddress } from "../helpers/binary_utils";
+
 import { KmsSigner } from '../helpers/kms/kms-signer';
 import { getWethAllowance, getWethBalance, approveWeth } from '../helpers/opensea/erc20_utils';
 
@@ -110,7 +114,6 @@ async function main(): Promise<void> {
             }
 
             // collection offer by traits
-            let tokenIds = [];
             if (smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 const traitKeys = Object.keys(smartBuy.traits);
                 if (traitKeys.length == 1) {
@@ -146,20 +149,44 @@ async function main(): Promise<void> {
                     }
                 }
 
-
+                let tokenIds = new Set();
                 const items = await OpenseaItems.findAll({
                     where: {
                         contract_address: Buffer.from(smartBuy.contract_address.slice(2), 'hex')
                     }
                 });
                 for (const item of items) {
-                    if (item.trait) {
-
+                    if (item.traits) {
+                        // 同个 trait 包含一个
+                        // 不同 trait 都包含
+                        const traitsMap = _.groupBy(item.traits, function (item) {
+                            return item.trait_type;
+                        });
+                        let allContains = true;
+                        for (let traitType in traitsMap) {
+                            let traitContains = false;
+                            for (let traitIndex in traitsMap[traitType]) {
+                                let traitValue = traitsMap[traitType][traitIndex].value;
+                                for (let tokenTraitIndex in item.trait) {
+                                    if (item.traits[tokenTraitIndex].type == traitType && item.traits[tokenTraitIndex].value == traitValue) {
+                                        traitContains = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!traitContains) {
+                                allContains = false;
+                                break;
+                            }
+                        }
+                        if (allContains) {
+                            tokenIds.add(item.token_id);
+                        }
                     }
                 }
-
-
-
+                if (tokenIds.size > 0) {
+                    await singleBid(kmsSigner, smartBuy, user, tokenIds);
+                }
             }
 
             // offer by rank
@@ -168,6 +195,34 @@ async function main(): Promise<void> {
             // offer by token id
         }
     }
+}
+
+const singleBid = async (kmsSigner, smartBuy, user, tokenIds) => {
+    const items = await OpenseaItems.findAll({
+        where: {
+            contract_address: parseAddress(smartBuy.contract_address),
+            token_id: _.map(tokenIds, tokenId => parseTokenId(tokenId))
+        }
+    });
+    for (const item of items) {
+        const preActionResult = await preCreateOffer(kmsSigner, user.smart_address, item.asset_id, smartBuy.price, 1)
+        if (preActionResult.errors) {
+            console.log(`Failed to make pre offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}, assetId:${item.asset_id}`);
+            return;
+        }
+        const postActionResult = await postCreateCollectionOffer(preActionResult);
+        if (postActionResult.errors) {
+            console.log(`Failed to make post offer for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
+            return;
+        }
+    }
+    await SmartBuyLogs.create({
+        user_id: user.id,
+        contract_address: smartBuy.contract_address,
+        smart_buy_id: smartBuy.id,
+        type: SmartBuyType[SmartBuyType.COLLECTION_OFFER]
+    });
+
 }
 
 
