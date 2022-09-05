@@ -95,7 +95,7 @@ const fetchEvents = async (slug, event_time_start, event_types) => {
       categories: null,
       chains: null,
       collections: [slug],
-      count: 20,
+      count: 1,
       cursor: null,
       eventTimestamp_Gt: event_time_start > 0 ? new Date(event_time_start).toISOString() : null,
       eventTypes: event_types,
@@ -236,14 +236,11 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       isMint: item.node.isMint,
       isAirdrop: item.node.isAirdrop,
       fromAccount: item.node.fromAccount,
-      perUnitPrice: item.node.perUnitPrice,
-      payment: item.node.payment,
+      price: item.node.price,
       seller: item.node.seller,
       toAccount: item.node.toAccount,
       winnerAccount: item.node.winnerAccount,
       transaction: item.node.transaction,
-      itemQuantity: item.node.itemQuantity,
-      traitCriteria: item.node.traitCriteria,
     })));
   }
   ctx.body = events;
