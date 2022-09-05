@@ -79,7 +79,8 @@ CollectionsRouter.get('/', async (ctx) => {
         contract: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
         total_supply: collection.total_supply,
         image: collection.image_url,
-        floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4))
+        floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
+        verified: collection.verified,
       }
     })
   }
@@ -162,6 +163,7 @@ CollectionsRouter.get('/:slug', async (ctx) => {
     total_volume: collection.total_volume,
     market_cap: collection.market_cap,
     traits: collection.traits,
+    verified: collection.verified,
   }
 });
 

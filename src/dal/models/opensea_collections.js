@@ -167,6 +167,11 @@ module.exports = class OpenseaCollections extends Model {
         allowNull: false,
         defaultValue: ""
       },
+      verified: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
       create_time: {
         type: DataTypes.DATE(6),
         allowNull: false,
