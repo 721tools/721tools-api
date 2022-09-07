@@ -61,7 +61,50 @@ const setRank = async (nfts) => {
   return nfts;
 }
 
-WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; body: { total_value_in_usd?: number; total_value_in_eth?: number; balance?: number; erc20_balances?: { WETH: number; }; nfts?: any[]; params?: { total_value_in_usd: number; total_value_in_eth: number; balance: number; erc20_balances: { WETH: number; }; nfts: any[]; }; }; }) => {
+const setNFTInfo = async (txs) => {
+  if (txs && txs.length > 0) {
+    const selectTokens = [];
+    for (const tx of txs) {
+      if (tx.type == 2) {
+        selectTokens.push({
+          "contract_address": parseAddress(tx.address),
+          "token_id": parseTokenId(tx.value)
+        });
+      }
+    }
+    const itemsRes = await OpenseaItems.findAll({ where: { [Op.or]: selectTokens } });
+    const collectionsRes = await OpenseaCollections.findAll({
+      where: {
+        contract_address: itemsRes.map(item => item.contract_address)
+      }
+    });
+
+
+    if (itemsRes && itemsRes.length > 0) {
+      const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex') + parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
+      const collctionMap = new Map<string, typeof OpenseaCollections>(collectionsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex'), item.dataValues]));
+
+      for (let index in txs) {
+        const nft = txs[index];
+        if (itemMap.has(nft.address + nft.value)) {
+          const item = itemMap.get(nft.address + nft.value);
+          nft.rank = item.traits_rank;
+          nft.image = item.image_url;
+          nft.slug = item.slug;
+          if (collctionMap.has(nft.address)) {
+            nft.floor_price = collctionMap.get(nft.address).floor_price;
+            nft.total_supply = collctionMap.get(nft.address).total_supply;
+          }
+        }
+        txs[index] = nft;
+      }
+    }
+  }
+  return txs;
+}
+
+
+WalletsRouter.get('/:address/assets', async (ctx) => {
   let address = ctx.params.address;
   let result = {
     total_value_in_usd: 0,
@@ -129,5 +172,67 @@ WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; b
     params: result
   }
 });
+
+
+
+
+WalletsRouter.get('/:address/txs', async (ctx) => {
+  let address = ctx.params.address;
+  let result = {
+    page: 0,
+    limit: 0,
+    total: 0,
+    tx: []
+  }
+
+  if (!ethers.utils.isAddress(address)) {
+    ctx.body = result;
+    return;
+  }
+
+  let page = getNumberParam('page', ctx);
+  let limit = getNumberParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 10;
+  }
+  if (limit > 20) {
+    limit = 20;
+  }
+
+  const walletRes = await axios.post(process.env.WALLET_RPC_URL, {
+    method: "asset.get_user_tx",
+    params:
+    {
+      wallet: address,
+      page: page,
+      limit: limit,
+    },
+    id: 2,
+    jsonrpc: "2.0"
+  });
+
+  const walletResult = walletRes.data.result;
+  result.page = walletResult.page;
+  result.limit = walletResult.limit;
+  result.total = walletResult.total;
+  result.tx = walletResult.tx;
+
+  result.tx = await setNFTInfo(result.tx);
+
+  ctx.body = {
+    params: result
+  }
+});
+
+const getNumberParam = (param, ctx) => {
+  let paramValue: number = 0;
+  if (param in ctx.request.query) {
+    paramValue = Number(ctx.request.query[param]);
+    if (paramValue < 0) {
+      paramValue = 0;
+    }
+  }
+  return paramValue;
+};
 
 module.exports = WalletsRouter;
