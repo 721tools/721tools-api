@@ -12,7 +12,7 @@ const Op = Sequelize.Op;
 
 const setFloorPrice = async (nfts) => {
   if (nfts && nfts.length > 0) {
-    const contractAddresses = [...new Set(nfts.map(item => parseAddress(item.contract)))];
+    const contractAddresses = [...new Set(nfts.map(item => parseAddress(item.token_address)))];
     const collectionsRes = await OpenseaCollections.findAll({
       where: {
         contract_address: contractAddresses
@@ -23,8 +23,8 @@ const setFloorPrice = async (nfts) => {
       const collectionMap = new Map<string, typeof OpenseaCollections>(collectionsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex'), item.dataValues]));
       for (let index in nfts) {
         const nft = nfts[index];
-        if (collectionMap.has(nft.contract)) {
-          const collection = collectionMap.get(nft.contract);
+        if (collectionMap.has(nft.token_address)) {
+          const collection = collectionMap.get(nft.token_address);
           nft.floor_price = parseFloat(parseFloat(collection.floor_price).toFixed(4));
           nft.total_supply = collection.total_supply;
         }
