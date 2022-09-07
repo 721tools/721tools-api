@@ -1,67 +1,14 @@
 import Router from 'koa-router';
 import { ethers } from "ethers";
 import axios from 'axios';
-import { gotScraping } from 'got-scraping';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
-import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
 import { OpenseaCollections, OpenseaItems } from '../dal/db';
-import genericErc20Abi from "../abis/ERC20.json";
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
-
-
-const provider = new ethers.providers.JsonRpcProvider(process.env.ETH_RPC_URL);
-const erc20Contract = new ethers.Contract("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", genericErc20Abi, provider);
 
 const WalletsRouter = new Router({});
 const Op = Sequelize.Op;
-
-const limiterFlexible = new RateLimiterMemory({
-  points: 1,
-  duration: 0.2,
-})
-const limiterQueue = new RateLimiterQueue(limiterFlexible);
-
-const fetchItemsByOwner = async (owner: any, cursor: any) => {
-  await limiterQueue.removeTokens(1);
-  const url = `https://api.opensea.io/api/v1/assets?limit=200&owner=${owner}&order_direction=desc${cursor ? `&cursor=${cursor}` : ""}&format=json`;
-  const response = await gotScraping({
-    url: url,
-    headers: {
-      'content-type': 'application/json',
-    },
-  });
-  return JSON.parse(response.body);
-}
-
-
-const fetchNFTs = async (owner: any) => {
-  let cursor = null;
-  let hasNextPage = true;
-  let items = [];
-  while (hasNextPage) {
-    const data = await fetchItemsByOwner(owner, cursor);
-    if (data.previous) {
-      cursor = data.previous;
-    } else {
-      hasNextPage = false;
-    }
-    Array.prototype.push.apply(items, _.map(data.assets.reverse(), (item) => ({
-      token_id: item.token_id,
-      slug: item.collection.slug,
-      name: item.name ? item.name : `${item.collection.name} #${item.token_id}`,
-      schema: item.asset_contract.schema_name,
-      contract: item.asset_contract.address,
-      total_supply: item.asset_contract.total_supply,
-      image: item.image_url ? item.image_url : "",
-      floor_price: 0,
-      last_price: item.last_sale ? parseFloat(parseFloat(ethers.utils.formatUnits(item.last_sale.total_price, 'ether')).toFixed(4)) : 0,
-      rank: 0
-    })));
-  }
-  return items;
-}
 
 const setFloorPrice = async (nfts) => {
   if (nfts && nfts.length > 0) {
@@ -93,7 +40,7 @@ const setRank = async (nfts) => {
     const selectTokens = [];
     for (const nft of nfts) {
       selectTokens.push({
-        "contract_address": parseAddress(nft.contract),
+        "contract_address": parseAddress(nft.token_address),
         "token_id": parseTokenId(nft.token_id)
       });
     }
@@ -103,8 +50,8 @@ const setRank = async (nfts) => {
       const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex') + parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
       for (let index in nfts) {
         const nft = nfts[index];
-        if (itemMap.has(nft.contract + nft.token_id)) {
-          const item = itemMap.get(nft.contract + nft.token_id);
+        if (itemMap.has(nft.token_address + nft.token_id)) {
+          const item = itemMap.get(nft.token_address + nft.token_id);
           nft.rank = item.traits_rank;
         }
         nfts[index] = nft;
@@ -125,23 +72,41 @@ WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; b
     },
     nfts: []
   }
+
+
   if (!ethers.utils.isAddress(address)) {
     ctx.body = result;
     return;
   }
-  let balance = await provider.getBalance(address);
+
+  const walletRes = await axios.post(process.env.WALLET_RPC_URL, {
+    method: "asset.get_user_balance",
+    params: [
+      {
+        wallet: address
+      }
+    ],
+    id: 2,
+    jsonrpc: "2.0"
+  });
+
+  const walletResult = walletRes.data.result;
+
+  let balance = walletResult.eth_balance;
   result.balance = parseFloat(parseFloat(ethers.utils.formatUnits(balance, 'ether')).toFixed(4));
   result.total_value_in_eth = result.balance;
 
-  const wethBalance = await erc20Contract.balanceOf(address);
+  let wethBalance = 0;
+  for (const erc20 of walletResult.erc20) {
+    if (ethers.utils.getAddress(erc20.token_address) == "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2") {
+      wethBalance = erc20.balance;
+    }
+  }
+
   result.erc20_balances.WETH = parseFloat(parseFloat(ethers.utils.formatUnits(wethBalance, 'ether')).toFixed(4));
   result.total_value_in_eth += result.erc20_balances.WETH;
 
-
-
-  result.nfts = await fetchNFTs(address);
-
-
+  result.nfts = walletResult.erc721;
 
   result.nfts = await setRank(result.nfts);
 
@@ -151,7 +116,7 @@ WalletsRouter.get('/:address/assets', async (ctx: { params: { address: any; }; b
   if (result.nfts && result.nfts.length > 0) {
     for (const nft of result.nfts) {
       if (nft.floor_price > 0) {
-        result.total_value_in_eth += nft.floor_price;
+        result.total_value_in_eth += (nft.floor_price * nft.balance);
       }
     }
   }
