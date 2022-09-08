@@ -6,7 +6,7 @@ import { SmartBuys, SmartBuyLogs, User, OpenseaCollections, OpenseaItems } from 
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
 import { UserType } from '../model/user-type';
-import { preCreateCollectionOffer, postCreateCollectionOffer, queryCollectionOfferMultiModalBase } from '../helpers/opensea/colletion_offer';
+import { preCreateCollectionOffer, postCreateCollectionOffer, queryCollectionOfferMultiModalBase } from '../helpers/opensea/collection_offer';
 import { preCreateOffer } from '../helpers/opensea/bid';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 
