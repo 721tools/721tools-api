@@ -95,7 +95,7 @@ const fetchEvents = async (slug, event_time_start, event_types) => {
       categories: null,
       chains: null,
       collections: [slug],
-      count: 1,
+      count: 20,
       cursor: null,
       eventTimestamp_Gt: event_time_start > 0 ? new Date(event_time_start).toISOString() : null,
       eventTypes: event_types,
