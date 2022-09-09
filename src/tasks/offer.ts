@@ -5,6 +5,7 @@ import _ from 'underscore';
 import { SmartBuys, SmartBuyLogs, User, OpenseaCollections, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
+import { HttpError } from '../model/http-error';
 import { UserType } from '../model/user-type';
 import { preCreateCollectionOffer, postCreateCollectionOffer, queryCollectionOfferMultiModalBase } from '../helpers/opensea/collection_offer';
 import { preCreateOffer } from '../helpers/opensea/bid';
@@ -67,6 +68,10 @@ async function main(): Promise<void> {
 
             const wethBalance = await getWethBalance(kmsSigner, user.smart_address);
             if (wethBalance.lt(ethers.utils.parseEther(smartBuy.price))) {
+                const ethBalance = await provider.getBalance(user.smart_address);
+                if (ethBalance.lt(ethers.utils.parseEther(smartBuy.price))) {
+                    await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.WALLET_ETH_INSUFFICIEN], error_details: "ETH balance insufficient" });
+                }
                 continue;
             }
 
@@ -95,11 +100,13 @@ async function main(): Promise<void> {
                 const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, null, smartBuy.price, 1)
                 if (preActionResult.errors) {
                     console.log(`Failed to make pre collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
+                    await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.OS_BID_ERROR], error_details: JSON.stringify(preActionResult.errors) });
                     continue;
                 }
                 const postActionResult = await postCreateCollectionOffer(preActionResult);
                 if (postActionResult.errors) {
                     console.log(`Failed to make post collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
+                    await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.OS_BID_ERROR], error_details: JSON.stringify(preActionResult.errors) });
                     continue;
                 }
 
@@ -127,11 +134,13 @@ async function main(): Promise<void> {
                                 }, smartBuy.price, 1)
                                 if (preActionResult.errors) {
                                     console.log(`Failed to make pre collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
+                                    await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.OS_BID_ERROR], error_details: JSON.stringify(preActionResult.errors) });
                                     continue;
                                 }
                                 const postActionResult = await postCreateCollectionOffer(preActionResult);
                                 if (postActionResult.errors) {
                                     console.log(`Failed to make post collection offer by trait ${traitKey}:${traitValue} for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
+                                    await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.OS_BID_ERROR], error_details: JSON.stringify(preActionResult.errors) });
                                     continue;
                                 }
                                 console.log(`Make collection offer by trait ${traitKey}:${traitValue} for smart buy ${smartBuy.id} success`);
@@ -261,11 +270,13 @@ const singleBid = async (kmsSigner, smartBuy, user, tokenIds, items) => {
         const preActionResult = await preCreateOffer(kmsSigner, user.smart_address, item.asset_id, smartBuy.price, 1)
         if (preActionResult.errors) {
             console.log(`Failed to make pre offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}, assetId:${item.asset_id}`);
+            await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.OS_BID_ERROR], error_details: JSON.stringify(preActionResult.errors) })
             return;
         }
         const postActionResult = await postCreateCollectionOffer(preActionResult);
         if (postActionResult.errors) {
             console.log(`Failed to make post offer for smart buy: ${smartBuy.id}, ${JSON.stringify(postActionResult.errors)}`);
+            await smartBuy.update({ status: SmartBuyStatus[SmartBuyStatus.PAUSED], error_code: HttpError[HttpError.OS_BID_ERROR], error_details: JSON.stringify(preActionResult.errors) })
             return;
         }
     }

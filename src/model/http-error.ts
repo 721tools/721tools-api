@@ -12,6 +12,8 @@ export enum HttpError {
     LOGIN_ERROR,
     USER_DISABLED,
     USER_EXPIRED,
+    OS_BID_ERROR,
+    WALLET_ETH_INSUFFICIEN,
 
     INTERNAL_SERVER_RROR,
 }
