@@ -3,10 +3,11 @@ import { OpenseaCollections, SmartBuys } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { requireWhitelist } from "../helpers/auth_helper"
+import { id } from 'ethers/lib/utils';
 
 const SmartBuysRouter = new Router({})
 
-SmartBuysRouter.put('/', requireWhitelist, async (ctx) => {
+SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
 
   if (!('slug' in ctx.request.body)) {
@@ -93,6 +94,30 @@ SmartBuysRouter.put('/', requireWhitelist, async (ctx) => {
   ctx.body = {}
 });
 
+
+
+SmartBuysRouter.put('/:id/start', requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+  const smartBuy = await SmartBuys.findOne({
+    id: id,
+    user_id: user.id
+  });
+  if (!smartBuy) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.SMART_BUY_NOT_FOUND]
+    }
+    return;
+  }
+
+  await smartBuy.update({
+    status: SmartBuyStatus[SmartBuyStatus.RUNNING],
+    error_code: "",
+    error_details: ""
+  });
+  ctx.body = {}
+});
+
 const getNumberParam = (param, ctx) => {
   let paramValue: number = 0;
   if (param in ctx.request.body) {
@@ -146,6 +171,7 @@ SmartBuysRouter.get('/', requireWhitelist, async (ctx) => {
     total: count,
     data: rows.map(smartBuy => {
       return {
+        id: smartBuy.id,
         slug: smartBuy.slug,
         min_rank: smartBuy.min_rank,
         max_rank: smartBuy.max_rank,
