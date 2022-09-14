@@ -74,6 +74,11 @@ module.exports = class SmartBuys extends Model {
         allowNull: false,
         defaultValue: ""
       },
+      block_height: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
       expiration_time: {
         type: DataTypes.DATE(6),
         allowNull: false,

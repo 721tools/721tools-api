@@ -1,11 +1,13 @@
 import Router from 'koa-router';
+import { ethers } from "ethers";
 import { OpenseaCollections, SmartBuys } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { requireWhitelist } from "../helpers/auth_helper"
-import { id } from 'ethers/lib/utils';
 
 const SmartBuysRouter = new Router({})
+
+const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
 
 SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
@@ -90,6 +92,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
     status: SmartBuyStatus[SmartBuyStatus.INIT],
     traits: ctx.request.body['traits'],
     token_ids: ctx.request.body['token_ids'],
+    block_height: await provider.getBlockNumber(),
   });
   ctx.body = {}
 });
@@ -99,7 +102,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
 SmartBuysRouter.put('/:id/start', requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
   const smartBuy = await SmartBuys.findOne({
-    id: id,
+    id: ctx.params.id,
     user_id: user.id
   });
   if (!smartBuy) {
