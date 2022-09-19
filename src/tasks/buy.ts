@@ -1,8 +1,9 @@
 import Sequelize from 'sequelize';
 import { ethers } from "ethers";
 import _ from 'underscore';
-import { redis } from '../dal/mq';
+import { OpenSeaSDK, Network } from 'opensea-js';
 
+import { redis } from '../dal/mq';
 import { SmartBuys, User, OpenseaCollections, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { UserType } from '../model/user-type';
@@ -80,7 +81,7 @@ async function main(): Promise<void> {
 
             // collection offer
             if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-                await buy(user, provider);
+                await buy(user, provider, contractAddress, tokenId, price);
                 continue;
             }
             // collection offer by traits
@@ -115,7 +116,7 @@ async function main(): Promise<void> {
                         }
                     }
                     if (allContains) {
-                        await buy(user, provider);
+                        await buy(user, provider, contractAddress, tokenId, price);
                         continue;
                     }
                 }
@@ -161,7 +162,7 @@ async function main(): Promise<void> {
                     },
                 });
                 if (items.length > 0) {
-                    await buy(user, provider);
+                    await buy(user, provider, contractAddress, tokenId, price);
                     continue;
                 }
             }
@@ -170,7 +171,7 @@ async function main(): Promise<void> {
             if (smartBuy.token_ids) {
                 const tokenIds = JSON.parse(smartBuy.token_ids);
                 if (tokenIds.includes(tokenId)) {
-                    await buy(user, provider);
+                    await buy(user, provider, contractAddress, tokenId, price);
                     continue;
                 }
             }
@@ -182,9 +183,28 @@ async function main(): Promise<void> {
     });
 }
 
-const buy = async (user, provider) => {
+const buy = async (user, provider, contractAddress, tokenId, price) => {
     const kmsSigner = new KmsSigner(user.address, provider);
-    // @todo buy it!
+    const apiKeys = process.env.OPENSEA_API_KEYS.split(",");
+    const openseaSDK = new OpenSeaSDK(provider,
+        {
+            networkName: process.env.NETWORK === 'rinkeby' ? Network.Rinkeby : Network.Main,
+            apiKey: _.sample(apiKeys),
+        },
+    );
+
+    // https://api.opensea.io/v2/orders/ethereum/seaport/listings?asset_contract_address=0xc9677cd8e9652f1b1aadd3429769b0ef8d7a0425&format=json&order_by=eth_price&order_direction=desc&token_ids=1159
+    const orders = await openseaSDK.api.getOrders({
+        assetContractAddress: contractAddress,
+        tokenId,
+        side: "ask"
+    });
+    if (orders.orders.length > 0) {
+        const currentPrice = parseFloat(ethers.utils.formatUnits(orders.orders[0].currentPrice, 'ether'));
+        if (currentPrice <= price) {
+            const transactionHash = await openseaSDK.fulfillOrder({ order: orders.orders[0], accountAddress: user.smart_address });
+        }
+    }
 
 };
 

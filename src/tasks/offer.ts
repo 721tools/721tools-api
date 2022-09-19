@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 import { ethers, BigNumber } from "ethers";
 import _ from 'underscore';
 
+
 import { SmartBuys, SmartBuyLogs, User, OpenseaCollections, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { SmartBuyType } from '../model/smart-buy-type';
