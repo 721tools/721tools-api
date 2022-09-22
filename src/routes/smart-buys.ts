@@ -9,7 +9,7 @@ const SmartBuysRouter = new Router({})
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
 
-SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
+SmartBuysRouter.post('/', async (ctx) => {
   const user = ctx.session.siwe.user;
 
   if (!('slug' in ctx.request.body)) {
@@ -75,6 +75,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
     ctx.body = {
       error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
+    ctx.status = 200;
     ctx.body = {}
   }
 
@@ -95,7 +96,6 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
     block_height: await provider.getBlockNumber(),
   });
   ctx.body = {}
-  console.log(`${user.id} create smart buy for collection ${collection.slug} success`);
 });
 
 
