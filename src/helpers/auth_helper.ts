@@ -89,13 +89,7 @@ export const isWhitelist = async (ctx) => {
 
 
 export const requireWhitelist = async (ctx, next) => {
-    if (!ctx.session.siwe) {
-        ctx.status = 401;
-        ctx.body = {
-            error: HttpError[HttpError.UNAUTHORIZED]
-        };
-        return;
-    }
+    await requireLogin(ctx, next);
 
     if (!(await isWhitelist(ctx))) {
         ctx.status = 403;
