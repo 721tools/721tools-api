@@ -84,7 +84,7 @@ export const addressIsWhitelist = async (address) => {
 }
 
 export const isWhitelist = async (ctx) => {
-    return addressIsWhitelist(ctx.session.siwe.address);
+    return await addressIsWhitelist(ctx.session.siwe.address);
 }
 
 

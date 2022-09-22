@@ -9,7 +9,7 @@ const SmartBuysRouter = new Router({})
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
 
-SmartBuysRouter.post('/', async (ctx) => {
+SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
 
   if (!('slug' in ctx.request.body)) {
