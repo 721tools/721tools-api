@@ -83,7 +83,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
   await SmartBuys.create({
     user_id: user.id,
     slug: slug,
-    contract_address: collection.contract_address,
+    contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
     min_rank: getNumberParam('min_rank', ctx),
     max_rank: getNumberParam('max_rank', ctx),
     amount: amount,
