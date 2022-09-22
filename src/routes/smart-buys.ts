@@ -95,6 +95,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
     block_height: await provider.getBlockNumber(),
   });
   ctx.body = {}
+  console.log(`${user.id} create smart buy for collection ${collection.slug} success`);
 });
 
 
