@@ -20,7 +20,7 @@ async function main(): Promise<void> {
     const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
     await sub.subscribe("OPENSEA-ETH-ORDER-LISTING", async (str) => {
         const message = JSON.parse(str);
-        if (message.payload.payload.item.chain.name !== "ethereum") {
+        if (message.payload.payload.item.chain.name !== "ethereum" && message.payload.payload.item.chain.name !== process.env.NETWORK) {
             return;
         }
 
@@ -30,8 +30,8 @@ async function main(): Promise<void> {
         }
 
         // example ethereum/0xded87c5e52c2ddc1934c10e751a1756c4f99ca98/85
-        const contractAddress = message.payload.payload.item.nft_id.substring(9, 51);
-        const tokenId = message.payload.payload.item.nft_id.slice(52);
+        const contractAddress = message.payload.payload.item.nft_id.split("/")[1];
+        const tokenId = message.payload.payload.item.nft_id.split("/")[2]
         const price = parseFloat(ethers.utils.formatUnits(message.payload.payload.base_price, 'ether'));
         const collection_slug = message.payload.payload.collection ? message.payload.payload.collection.slug : '';
         const order_created_date = message.payload.payload.listing_date;
@@ -48,15 +48,19 @@ async function main(): Promise<void> {
                     [Sequelize.Op.gt]: new Date()
                 },
                 price: {
-                    [Sequelize.Op.lte]: price
+                    [Sequelize.Op.gte]: price
                 },
                 amount: { [Sequelize.Op.gt]: Sequelize.col('purchased') },
+                contract_address: contractAddress,
             },
-            contract_address: contractAddress,
             order: [['id', 'ASC']]
         });
 
         for (const smartBuy of smartBuys) {
+            if (smartBuy.contract_address !== contractAddress) {
+                continue;
+            }
+
             const user = await User.findOne({
                 where: {
                     id: smartBuy.user_id
@@ -80,12 +84,12 @@ async function main(): Promise<void> {
             }
 
             // collection offer
-            if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+            if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 await buy(user, provider, contractAddress, tokenId, price);
                 continue;
             }
             // collection offer by traits
-            if (smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+            if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 const item = await OpenseaItems.findOne({
                     where: {
                         contract_address: parseAddress(smartBuy.contract_address),
