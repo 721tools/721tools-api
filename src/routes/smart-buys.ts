@@ -91,7 +91,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
     expiration_time: expirationTime,
     status: SmartBuyStatus[SmartBuyStatus.INIT],
     traits: ctx.request.body['traits'],
-    token_ids: ctx.request.body['token_ids'],
+    token_ids: JSON.stringify(ctx.request.body['token_ids']),
     block_height: await provider.getBlockNumber(),
   });
   ctx.body = {}
