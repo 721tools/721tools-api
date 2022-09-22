@@ -89,8 +89,6 @@ export const isWhitelist = async (ctx) => {
 
 
 export const requireWhitelist = async (ctx, next) => {
-    await requireLogin(ctx, next);
-
     if (!(await isWhitelist(ctx))) {
         ctx.status = 403;
         ctx.body = {
@@ -99,5 +97,4 @@ export const requireWhitelist = async (ctx, next) => {
         return;
     }
     next();
-
 }

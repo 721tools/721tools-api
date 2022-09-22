@@ -3,13 +3,13 @@ import { ethers } from "ethers";
 import { OpenseaCollections, SmartBuys } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { SmartBuyStatus } from '../model/smart-buy-status';
-import { requireWhitelist } from "../helpers/auth_helper"
+import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
 
 const SmartBuysRouter = new Router({})
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
 
-SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
+SmartBuysRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
 
   if (!('slug' in ctx.request.body)) {
@@ -100,7 +100,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
 
 
 
-SmartBuysRouter.put('/:id/start', requireWhitelist, async (ctx) => {
+SmartBuysRouter.put('/:id/start', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
   const smartBuy = await SmartBuys.findOne({
     id: ctx.params.id,
@@ -145,7 +145,7 @@ const getNumberQueryParam = (param, ctx) => {
 };
 
 
-SmartBuysRouter.get('/', requireWhitelist, async (ctx) => {
+SmartBuysRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
 
   let page = getNumberQueryParam('page', ctx);
