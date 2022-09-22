@@ -75,7 +75,7 @@ SmartBuysRouter.post('/', requireWhitelist, async (ctx) => {
     ctx.body = {
       error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
-    return;
+    ctx.body = {}
   }
 
   const expirationTime = new Date(expiration);
