@@ -99,7 +99,7 @@ async function main(): Promise<void> {
 
 
             // collection offer
-            if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+            if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 const preActionResult = await preCreateCollectionOffer(kmsSigner, user.smart_address, smartBuy.contract_address, smartBuy.slug, null, smartBuy.price, 1)
                 if (preActionResult.errors) {
                     console.log(`Failed to make pre collection offer for smart buy: ${smartBuy.id}, ${JSON.stringify(preActionResult.errors)}`);
@@ -124,7 +124,7 @@ async function main(): Promise<void> {
             }
 
             // collection offer by traits
-            if (smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+            if (!_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 const traitKeys = Object.keys(smartBuy.traits);
                 if (traitKeys.length == 1) {
                     const isTraitOffersEnabled = await queryCollectionOfferMultiModalBase(smartBuy.slug);

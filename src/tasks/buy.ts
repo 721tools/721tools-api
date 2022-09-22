@@ -89,7 +89,7 @@ async function main(): Promise<void> {
                 continue;
             }
             // collection offer by traits
-            if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+            if (!_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 const item = await OpenseaItems.findOne({
                     where: {
                         contract_address: parseAddress(smartBuy.contract_address),
@@ -203,6 +203,7 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
         tokenId,
         side: "ask"
     });
+
     if (orders.orders.length > 0) {
         const currentPrice = parseFloat(ethers.utils.formatUnits(orders.orders[0].currentPrice, 'ether'));
         if (currentPrice <= price) {
