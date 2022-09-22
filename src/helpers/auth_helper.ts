@@ -40,7 +40,7 @@ export const requireLogin = async (ctx, next) => {
 
     ctx.session.siwe.user = user;
 
-    next();
+    await next();
 }
 
 export const requireMember = async (ctx, next) => {
@@ -74,7 +74,7 @@ export const requireMember = async (ctx, next) => {
         };
         return;
     }
-    next();
+    await next();
 
 }
 
@@ -89,12 +89,17 @@ export const isWhitelist = async (ctx) => {
 
 
 export const requireWhitelist = async (ctx, next) => {
+    console.log("--------------")
+
     if (!(await isWhitelist(ctx))) {
+        console.log("33333333333333")
         ctx.status = 403;
         ctx.body = {
             error: HttpError[HttpError.NOT_IN_WHITELIST]
         };
         return;
     }
-    next();
+    console.log("-2222222--")
+
+    await next();
 }
