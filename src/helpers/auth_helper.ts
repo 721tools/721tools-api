@@ -89,17 +89,13 @@ export const isWhitelist = async (ctx) => {
 
 
 export const requireWhitelist = async (ctx, next) => {
-    console.log("--------------")
-
     if (!(await isWhitelist(ctx))) {
-        console.log("33333333333333")
         ctx.status = 403;
         ctx.body = {
             error: HttpError[HttpError.NOT_IN_WHITELIST]
         };
         return;
     }
-    console.log("-2222222--")
 
     await next();
 }
