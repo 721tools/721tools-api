@@ -95,82 +95,63 @@ async function main(): Promise<void> {
                 continue;
             }
 
-            // collection offer
+            // collection buy
             if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 await buy(user, provider, contractAddress, tokenId, price);
                 continue;
             }
-            // collection offer by traits
-            if (!_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-                const item = await OpenseaItems.findOne({
-                    where: {
-                        contract_address: parseAddress(smartBuy.contract_address),
-                        token_id: parseTokenId(tokenId)
-                    }
-                });
-                if (item && !_.isEmpty(item.traits)) {
-                    const traitsMap = _.groupBy(item.traits, function (item) {
-                        return item.trait_type;
-                    });
+            // collection buy by traits and ranks
+            if (!_.isEmpty(smartBuy.traits) || (smartBuy.min_rank > 0 && smartBuy.max_rank > 0)) {
 
-                    let allContains = true;
-                    for (const traitType of Object.keys(smartBuy.traits)) {
-                        let traitContains = false;
-                        if (traitType in traitsMap) {
-                            const traitValues = traitsMap[traitType].map(trait => {
-                                return trait.value
-                            });
-                            for (const traitValue of smartBuy.traits[traitType]) {
-                                if (traitValues.includes(traitValue)) {
-                                    traitContains = true;
-                                    break;
+                const where = (smartBuy.min_rank > 0 || smartBuy.max_rank > 0) ? {
+                    contract_address: collection.contract_address,
+                    traits_rank: {
+                        [Sequelize.Op.gte]: smartBuy.max_rank,
+                        [Sequelize.Op.lte]: smartBuy.min_rank
+                    },
+                    token_id: parseTokenId(tokenId)
+                } : {
+                    contract_address: collection.contract_address,
+                    token_id: parseTokenId(tokenId),
+                };
+
+                const item = await OpenseaItems.findOne({
+                    where: where
+                });
+                if (item) {
+                    if (!_.isEmpty(item.traits)) {
+                        const traitsMap = _.groupBy(item.traits, function (item) {
+                            return item.trait_type;
+                        });
+
+                        let allContains = true;
+                        for (const traitType of Object.keys(smartBuy.traits)) {
+                            let traitContains = false;
+                            if (traitType in traitsMap) {
+                                const traitValues = traitsMap[traitType].map(trait => {
+                                    return trait.value
+                                });
+                                for (const traitValue of smartBuy.traits[traitType]) {
+                                    if (traitValues.includes(traitValue)) {
+                                        traitContains = true;
+                                        break;
+                                    }
                                 }
                             }
+                            if (!traitContains) {
+                                allContains = false;
+                                break;
+                            }
                         }
-                        if (!traitContains) {
-                            allContains = false;
-                            break;
-                        }
-                    }
 
-                    if (allContains) {
+                        if (allContains) {
+                            await buy(user, provider, contractAddress, tokenId, price);
+                            continue;
+                        }
+                    } else {
                         await buy(user, provider, contractAddress, tokenId, price);
                         continue;
                     }
-                }
-            }
-
-            // offer by rank
-            // 所有 items 都有 rank，items 数量大于等于 total_supply
-            if (smartBuy.min_rank > 0 && smartBuy.max_rank > 0) {
-                if (smartBuy.max_rank > smartBuy.min_rank) {
-                    continue;
-                }
-
-                const itemsCount = await OpenseaItems.count({
-                    where: {
-                        contract_address: collection.contract_address,
-                        traits_rank: {
-                            [Sequelize.Op.gt]: 0
-                        },
-                    },
-                });
-                if (itemsCount < collection.total_supply) {
-                    continue;
-                }
-                const items = await OpenseaItems.findAll({
-                    where: {
-                        contract_address: collection.contract_address,
-                        traits_rank: {
-                            [Sequelize.Op.gte]: smartBuy.max_rank,
-                            [Sequelize.Op.lte]: smartBuy.min_rank
-                        },
-                        token_id: parseTokenId(tokenId)
-                    },
-                });
-                if (items.length > 0) {
-                    await buy(user, provider, contractAddress, tokenId, price);
-                    continue;
                 }
             }
 
@@ -189,6 +170,7 @@ async function main(): Promise<void> {
 
     });
 }
+
 
 const buy = async (user, provider, contractAddress, tokenId, price) => {
     const kmsSigner = new KmsSigner(user.address, provider);
@@ -213,7 +195,6 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
             const transactionHash = await openseaSDK.fulfillOrder({ order: orders.orders[0], accountAddress: user.smart_address });
         }
     }
-
 };
 
 main();
