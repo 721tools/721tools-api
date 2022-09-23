@@ -88,7 +88,7 @@ async function main(): Promise<void> {
 
                 // offer by rank
                 // 所有 items 都有 rank，items 数量大于等于 total_supply
-                if (smartBuy.min_rank > 0 || smartBuy.max_rank > 0) {
+                if (smartBuy.min_rank > 0 && smartBuy.max_rank > 0) {
                     if (smartBuy.max_rank < smartBuy.min_rank) {
                         continue;
                     }
