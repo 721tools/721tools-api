@@ -96,19 +96,20 @@ async function main(): Promise<void> {
                         token_id: parseTokenId(tokenId)
                     }
                 });
-                if (item && item.traits) {
-                    // 同个 trait 包含一个
-                    // 不同 trait 都包含
+                if (item && !_.isEmpty(item.traits)) {
                     const traitsMap = _.groupBy(item.traits, function (item) {
                         return item.trait_type;
                     });
+
                     let allContains = true;
-                    for (let traitType in traitsMap) {
+                    for (const traitType of Object.keys(smartBuy.traits)) {
                         let traitContains = false;
-                        for (let traitIndex in traitsMap[traitType]) {
-                            let traitValue = traitsMap[traitType][traitIndex].value;
-                            for (let tokenTraitIndex in item.trait) {
-                                if (item.traits[tokenTraitIndex].type == traitType && item.traits[tokenTraitIndex].value == traitValue) {
+                        if (traitType in traitsMap) {
+                            const traitValues = traitsMap[traitType].map(trait => {
+                                return trait.value
+                            });
+                            for (const traitValue of smartBuy.traits[traitType]) {
+                                if (traitValues.includes(traitValue)) {
                                     traitContains = true;
                                     break;
                                 }
@@ -119,6 +120,7 @@ async function main(): Promise<void> {
                             break;
                         }
                     }
+
                     if (allContains) {
                         await buy(user, provider, contractAddress, tokenId, price);
                         continue;
