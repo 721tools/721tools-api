@@ -78,6 +78,18 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            const collection = await OpenseaCollections.findOne({
+                where: {
+                    contract_address: parseAddress(smartBuy.contract_address)
+                }
+            });
+            if (!collection) {
+                continue;
+            }
+            if (collection.status == 1) {
+                continue;
+            }
+
             const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(user.smart_address)));
             if (balance < price) {
                 continue;
@@ -135,17 +147,6 @@ async function main(): Promise<void> {
                     continue;
                 }
 
-                const collection = await OpenseaCollections.findOne({
-                    where: {
-                        contract_address: parseAddress(smartBuy.contract_address)
-                    }
-                });
-                if (!collection) {
-                    continue;
-                }
-                if (collection.status == 1) {
-                    continue;
-                }
                 const itemsCount = await OpenseaItems.count({
                     where: {
                         contract_address: collection.contract_address,

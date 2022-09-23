@@ -50,6 +50,18 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            const collection = await OpenseaCollections.findOne({
+                where: {
+                    contract_address: parseAddress(smartBuy.contract_address)
+                }
+            });
+            if (!collection) {
+                continue;
+            }
+            if (collection.status == 1) {
+                continue;
+            }
+
             const count = await SmartBuyLogs.count({
                 where: {
                     type: {
@@ -123,10 +135,12 @@ async function main(): Promise<void> {
                 continue;
             }
 
-            // collection offer by traits
-            if (!_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
+
+            // offer by traits or rank
+            if (!_.isEmpty(smartBuy.traits) || (smartBuy.min_rank >= 0 && smartBuy.max_rank >= 0)) {
                 const traitKeys = Object.keys(smartBuy.traits);
-                if (traitKeys.length == 1) {
+                // collection offer by traits
+                if (traitKeys.length == 1 && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                     const isTraitOffersEnabled = await queryCollectionOfferMultiModalBase(smartBuy.slug);
                     if (isTraitOffersEnabled) {
                         for (const traitKey of traitKeys) {
@@ -161,16 +175,49 @@ async function main(): Promise<void> {
                     }
                 }
 
-                let tokenIds = new Set();
-                const items = await OpenseaItems.findAll({
-                    where: {
-                        contract_address: Buffer.from(smartBuy.contract_address.slice(2), 'hex')
-                    }
-                });
-                for (const item of items) {
-                    if (_.isEmpty(item.traits)) {
+                if (smartBuy.max_rank > 0 && smartBuy.min_rank > 0) {
+                    if (smartBuy.max_rank > smartBuy.min_rank) {
                         continue;
                     }
+                    const itemsCount = await OpenseaItems.count({
+                        where: {
+                            contract_address: collection.contract_address,
+                            traits_rank: {
+                                [Sequelize.Op.gt]: 0
+                            },
+                        },
+                    });
+                    if (itemsCount < collection.total_supply) {
+                        continue;
+                    }
+                }
+
+
+                const where = (smartBuy.min_rank > 0 || smartBuy.max_rank > 0) ? {
+                    contract_address: collection.contract_address,
+                    traits_rank: {
+                        [Sequelize.Op.gte]: smartBuy.max_rank,
+                        [Sequelize.Op.lte]: smartBuy.min_rank
+                    }
+                } : {
+                    contract_address: collection.contract_address,
+                };
+                const items = await OpenseaItems.findAll({
+                    where: where
+                });
+                let tokenIds = new Set();
+                for (const item of items) {
+                    if (_.isEmpty(item.traits)) {
+                        // offer by rank
+                        if (smartBuy.min_rank > 0 && smartBuy.max_rank > 0) {
+                            if (items.length > 0) {
+                                await singleBid(kmsSigner, smartBuy, user, [], items);
+                            }
+                        }
+                        continue;
+                    }
+
+
                     const traitsMap = _.groupBy(item.traits, function (item) {
                         return item.trait_type;
                     });
@@ -203,52 +250,6 @@ async function main(): Promise<void> {
                     continue;
                 }
             }
-
-            // offer by rank
-            // 所有 items 都有 rank，items 数量大于等于 total_supply
-            if (smartBuy.min_rank > 0 && smartBuy.max_rank > 0) {
-                if (smartBuy.max_rank > smartBuy.min_rank) {
-                    // todo change status to error
-                    continue;
-                }
-
-                const collection = await OpenseaCollections.findOne({
-                    where: {
-                        contract_address: parseAddress(smartBuy.contract_address)
-                    }
-                });
-                if (!collection) {
-                    continue;
-                }
-                if (collection.status == 1) {
-                    continue;
-                }
-                const itemsCount = await OpenseaItems.count({
-                    where: {
-                        contract_address: collection.contract_address,
-                        traits_rank: {
-                            [Sequelize.Op.gt]: 0
-                        },
-                    },
-                });
-                if (itemsCount < collection.total_supply) {
-                    continue;
-                }
-                const items = await OpenseaItems.findAll({
-                    where: {
-                        contract_address: collection.contract_address,
-                        traits_rank: {
-                            [Sequelize.Op.gte]: smartBuy.max_rank,
-                            [Sequelize.Op.lte]: smartBuy.min_rank
-                        },
-                    },
-                });
-                if (items.length > 0) {
-                    await singleBid(kmsSigner, smartBuy, user, [], items);
-                }
-
-            }
-
 
             // offer by token id
             if (smartBuy.token_ids) {
