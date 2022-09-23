@@ -113,9 +113,45 @@ SmartBuysRouter.put('/:id/start', requireLogin, requireWhitelist, async (ctx) =>
     }
     return;
   }
+  if (smartBuy.status == SmartBuyStatus[SmartBuyStatus.FINISHED]) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.SMART_BUY_FINISHED]
+    }
+    return;
+  }
 
   await smartBuy.update({
     status: SmartBuyStatus[SmartBuyStatus.RUNNING],
+    error_code: "",
+    error_details: ""
+  });
+  ctx.body = {}
+});
+
+SmartBuysRouter.put('/:id/stop', requireLogin, requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+  const smartBuy = await SmartBuys.findOne({
+    id: ctx.params.id,
+    user_id: user.id
+  });
+  if (!smartBuy) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.SMART_BUY_NOT_FOUND]
+    }
+    return;
+  }
+  if (smartBuy.status == SmartBuyStatus[SmartBuyStatus.FINISHED]) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.SMART_BUY_FINISHED]
+    }
+    return;
+  }
+
+  await smartBuy.update({
+    status: SmartBuyStatus[SmartBuyStatus.PAUSED],
     error_code: "",
     error_details: ""
   });
