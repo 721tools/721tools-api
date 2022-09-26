@@ -40,7 +40,7 @@ export const requireLogin = async (ctx, next) => {
 
     ctx.session.siwe.user = user;
 
-    next();
+    await next();
 }
 
 export const requireMember = async (ctx, next) => {
@@ -74,7 +74,7 @@ export const requireMember = async (ctx, next) => {
         };
         return;
     }
-    next();
+    await next();
 
 }
 
@@ -96,5 +96,6 @@ export const requireWhitelist = async (ctx, next) => {
         };
         return;
     }
-    next();
+
+    await next();
 }
