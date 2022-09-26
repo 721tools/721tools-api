@@ -51,6 +51,19 @@ CollectionsRouter.get('/', async (ctx) => {
     }
   }
 
+  let slugs = [];
+  if ('slugs' in ctx.request.query) {
+    if (ctx.request.query['slugs'] instanceof Array) {
+      slugs = ctx.request.query['slugs'];
+    } else {
+      slugs = [ctx.request.query['slugs']]
+    }
+  }
+
+  if (slugs.length > 0) {
+    criteria['slug'] = slugs;
+  }
+
   let order_by = "";
   if ('order_by' in ctx.request.query) {
     order_by = ctx.request.query['order_by'];
