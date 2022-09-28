@@ -172,6 +172,11 @@ module.exports = class OpenseaCollections extends Model {
         allowNull: false,
         defaultValue: false
       },
+      rarity_enabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
       create_time: {
         type: DataTypes.DATE(6),
         allowNull: false,

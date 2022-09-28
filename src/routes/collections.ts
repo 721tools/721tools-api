@@ -94,6 +94,7 @@ CollectionsRouter.get('/', async (ctx) => {
         image: collection.image_url,
         floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
         verified: collection.verified,
+        rarity_enabled: collection.rarity_enabled,
       }
     })
   }
@@ -189,6 +190,7 @@ CollectionsRouter.get('/:slug', async (ctx) => {
     market_cap: collection.market_cap,
     traits: collection.traits,
     verified: collection.verified,
+    rarity_enabled: collection.rarity_enabled,
   }
 });
 
