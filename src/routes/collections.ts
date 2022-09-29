@@ -246,7 +246,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       Array.prototype.push.apply(events, _.map(orders, (item) => ({
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
-        from: item.from,
+        from: '0x' + Buffer.from(item.from, 'binary').toString('hex'),
         order_event_timestamp: item.order_event_timestamp,
         event_type: item.type == 0 ? "OFFER_ENTERED" : "AUCTION_CREATED"
       })));
@@ -271,8 +271,8 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       Array.prototype.push.apply(events, _.map(nftSales, (item) => ({
         token_id: parseInt(item.offer_identifier.toString("hex"), 16),
         price: item.price,
-        from: item.from,
-        to: item.to,
+        from: '0x' + Buffer.from(item.from, 'binary').toString('hex'),
+        to: '0x' + Buffer.from(item.to, 'binary').toString('hex'),
         height: item.height,
         tx_hash: item.tx_hash,
         event_type: "AUCTION_SUCCESSFUL",
