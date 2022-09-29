@@ -220,7 +220,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
   let events = [];
   if (event_types.includes("AUCTION_CREATED") || event_types.includes("OFFER_ENTERED")) {
     const where = {
-      contract_address: parseAddress(collection.contract_address),
+      contract_address: collection.contract_address,
     };
     if (occurred_after > 0) {
       where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after).toISOString() }
@@ -238,7 +238,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
     const orders = await Orders.findAll({
       where: where,
       order: [
-        ["order_event_timestamp", "ASC"]
+        ["id", "DESC"]
       ],
       limit: 20,
     });
@@ -262,8 +262,8 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         }
       },
       order: [
-        ["height", "ASC"],
-        ["id", "ASC"]
+        ["height", "DESC"],
+        ["id", "DESC"]
       ],
       limit: 20,
     });
