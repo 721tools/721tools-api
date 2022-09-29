@@ -246,7 +246,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       Array.prototype.push.apply(events, _.map(orders, (item) => ({
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
-        from: '0x' + Buffer.from(item.from, 'binary').toString('hex'),
+        from: '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
         order_event_timestamp: item.order_event_timestamp,
         event_type: item.type == 0 ? "OFFER_ENTERED" : "AUCTION_CREATED"
       })));
