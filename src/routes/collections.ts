@@ -307,7 +307,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       }
 
       // todo sort by time, id
-      events = events.slice(20);
+      // events = events.slice(20);
     }
   }
 
