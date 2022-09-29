@@ -27,6 +27,10 @@ const setFloorPrice = async (nfts) => {
           const collection = collectionMap.get(nft.token_address);
           nft.floor_price = parseFloat(parseFloat(collection.floor_price).toFixed(4));
           nft.total_supply = collection.total_supply;
+          nft.image_url = collection.image_url;
+          nft.collection_name = collection.name;
+          nft.name = collection.name;
+          nft.rank = 0;
         }
         nfts[index] = nft;
       }
@@ -53,6 +57,10 @@ const setRank = async (nfts) => {
         if (itemMap.has(nft.token_address + nft.token_id)) {
           const item = itemMap.get(nft.token_address + nft.token_id);
           nft.rank = item.traits_rank;
+          nft.image_url = item.image_url;
+          nft.rank = 0;
+        } else {
+          nft.name = nft.name + " #" + nft.token_id;
         }
         nfts[index] = nft;
       }
@@ -151,11 +159,12 @@ WalletsRouter.get('/:address/assets', async (ctx) => {
 
   result.nfts = walletResult.erc721;
 
-  result.nfts = await setRank(result.nfts);
-
   result.total_value_in_eth = parseFloat(result.total_value_in_eth.toFixed(4));
 
   result.nfts = await setFloorPrice(result.nfts);
+
+  result.nfts = await setRank(result.nfts);
+
   if (result.nfts && result.nfts.length > 0) {
     for (const nft of result.nfts) {
       if (nft.floor_price > 0) {
