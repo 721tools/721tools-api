@@ -242,6 +242,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       ],
       limit: 20,
     });
+
     if (orders.length > 0) {
       Array.prototype.push.apply(events, _.map(orders, (item) => ({
         token_id: parseInt(item.token_id.toString("hex"), 16),
