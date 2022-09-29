@@ -274,7 +274,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         from: '0x' + Buffer.from(item.from, 'binary').toString('hex'),
         to: '0x' + Buffer.from(item.to, 'binary').toString('hex'),
         height: item.height,
-        tx_hash: item.tx_hash,
+        tx_hash: '0x' + Buffer.from(item.tx_hash, 'binary').toString('hex'),
         event_type: "AUCTION_SUCCESSFUL",
         order_event_timestamp: "111222333"
       })));
