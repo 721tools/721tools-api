@@ -1,11 +1,11 @@
 import Router from 'koa-router';
 import Sequelize from 'sequelize';
 import { ethers } from 'ethers';
-import { gotScraping } from 'got-scraping';
 
 import _ from 'underscore';
-import { OpenseaCollections } from '../dal/db';
+import { OpenseaCollections, Orders, NFTSales, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
+import { parseAddress, parseTokenId } from "../helpers/binary_utils";
 
 const CollectionsRouter = new Router({})
 
@@ -99,38 +99,6 @@ CollectionsRouter.get('/', async (ctx) => {
     })
   }
 });
-
-const fetchEvents = async (slug, event_time_start, event_types, limit) => {
-  const eventHistoryPollQuery = {
-    id: "EventHistoryPollQuery",
-    query: "query EventHistoryPollQuery(\n  $archetype: ArchetypeInputType\n  $categories: [CollectionSlug!]\n  $chains: [ChainScalar!]\n  $collections: [CollectionSlug!]\n  $count: Int = 10\n  $cursor: String\n  $eventTimestamp_Gt: DateTime\n  $eventTypes: [EventType!]\n  $identity: IdentityInputType\n  $showAll: Boolean = false\n) {\n  assetEvents(after: $cursor, archetype: $archetype, categories: $categories, chains: $chains, collections: $collections, eventTimestamp_Gt: $eventTimestamp_Gt, eventTypes: $eventTypes, first: $count, identity: $identity, includeHidden: true) {\n    edges {\n      node {\n        assetBundle @include(if: $showAll) {\n          relayId\n          ...AssetCell_assetBundle\n          ...bundle_url\n          id\n        }\n        assetQuantity {\n          asset @include(if: $showAll) {\n            relayId\n            assetContract {\n              ...CollectionLink_assetContract\n              id\n            }\n            ...AssetCell_asset\n            ...asset_url\n            collection {\n              ...CollectionLink_collection\n              id\n            }\n            id\n          }\n          ...quantity_data\n          id\n        }\n        relayId\n        eventTimestamp\n        eventType\n        customEventName\n        offerExpired\n        ...utilsAssetEventLabel\n        devFee {\n          asset {\n            assetContract {\n              chain\n              id\n            }\n            id\n          }\n          quantity\n          ...AssetQuantity_data\n          id\n        }\n        devFeePaymentEvent {\n          ...EventTimestamp_data\n          id\n        }\n        fromAccount {\n          address\n          ...AccountLink_data\n          id\n        }\n        price {\n          quantity\n          quantityInEth\n          ...AssetQuantity_data\n          id\n        }\n        endingPrice {\n          quantity\n          ...AssetQuantity_data\n          id\n        }\n        seller {\n          ...AccountLink_data\n          id\n        }\n        toAccount {\n          ...AccountLink_data\n          id\n        }\n        winnerAccount {\n          ...AccountLink_data\n          id\n        }\n        ...EventTimestamp_data\n        id\n      }\n    }\n  }\n}\n\nfragment AccountLink_data on AccountType {\n  address\n  config\n  isCompromised\n  user {\n    publicUsername\n    id\n  }\n  displayName\n  ...ProfileImage_data\n  ...wallet_accountKey\n  ...accounts_url\n}\n\nfragment AssetCell_asset on AssetType {\n  collection {\n    name\n    id\n  }\n  name\n  ...AssetMedia_asset\n  ...asset_url\n}\n\nfragment AssetCell_assetBundle on AssetBundleType {\n  assetQuantities(first: 2) {\n    edges {\n      node {\n        asset {\n          collection {\n            name\n            id\n          }\n          name\n          ...AssetMedia_asset\n          ...asset_url\n          id\n        }\n        relayId\n        id\n      }\n    }\n  }\n  name\n  ...bundle_url\n}\n\nfragment AssetMedia_asset on AssetType {\n  animationUrl\n  backgroundColor\n  collection {\n    displayData {\n      cardDisplayStyle\n    }\n    id\n  }\n  isDelisted\n  imageUrl\n  displayImageUrl\n}\n\nfragment AssetQuantity_data on AssetQuantityType {\n  asset {\n    ...Price_data\n    id\n  }\n  quantity\n}\n\nfragment CollectionLink_assetContract on AssetContractType {\n  address\n  blockExplorerLink\n}\n\nfragment CollectionLink_collection on CollectionType {\n  name\n  ...collection_url\n  ...verification_data\n}\n\nfragment EventTimestamp_data on AssetEventType {\n  eventTimestamp\n  transaction {\n    blockExplorerLink\n    id\n  }\n}\n\nfragment Price_data on AssetType {\n  decimals\n  imageUrl\n  symbol\n  usdSpotPrice\n  assetContract {\n    blockExplorerLink\n    chain\n    id\n  }\n}\n\nfragment ProfileImage_data on AccountType {\n  imageUrl\n  user {\n    publicUsername\n    id\n  }\n  displayName\n}\n\nfragment accounts_url on AccountType {\n  address\n  user {\n    publicUsername\n    id\n  }\n}\n\nfragment asset_url on AssetType {\n  assetContract {\n    address\n    chain\n    id\n  }\n  tokenId\n}\n\nfragment bundle_url on AssetBundleType {\n  slug\n}\n\nfragment collection_url on CollectionType {\n  slug\n}\n\nfragment quantity_data on AssetQuantityType {\n  asset {\n    decimals\n    id\n  }\n  quantity\n}\n\nfragment utilsAssetEventLabel on AssetEventType {\n  isMint\n  isAirdrop\n  eventType\n}\n\nfragment verification_data on CollectionType {\n  isMintable\n  isSafelisted\n  isVerified\n}\n\nfragment wallet_accountKey on AccountType {\n  address\n}\n",
-    variables: {
-      archetype: null,
-      categories: null,
-      chains: null,
-      collections: [slug],
-      count: limit,
-      cursor: null,
-      eventTimestamp_Gt: event_time_start > 0 ? new Date(event_time_start).toISOString() : null,
-      eventTypes: event_types,
-      identity: null,
-      showAll: true
-    }
-  };
-  const response = await gotScraping({
-    url: `https://opensea.io/__api/graphql/`,
-    body: JSON.stringify(eventHistoryPollQuery),
-    method: 'POST',
-    headers: {
-      "content-type": "application/json",
-      "x-signed-query": "a30d9c6dc5cee1500ea03fd7eceef335312518b426d858ca8d2aafa6422eb240",
-    }
-  });
-  if (response.statusCode != 200) {
-    return JSON.parse(response.body);
-  }
-  return JSON.parse(response.body);
-}
 
 CollectionsRouter.get('/:slug', async (ctx) => {
   let slug = ctx.params.slug;
@@ -246,25 +214,103 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       event_types = [ctx.request.query['event_types']]
     }
   }
-
-  const res = await fetchEvents(collection.slug, occurred_after, event_types, limit);
-  let events = [];
-  if (res.data.assetEvents.edges.length > 0) {
-    Array.prototype.push.apply(events, _.map(res.data.assetEvents.edges, (item) => ({
-      eventTimestamp: new Date(item.node.eventTimestamp).getTime(),
-      eventType: item.node.eventType,
-      offerExpired: item.node.offerExpired,
-      assetQuantity: item.node.assetQuantity,
-      isMint: item.node.isMint,
-      isAirdrop: item.node.isAirdrop,
-      fromAccount: item.node.fromAccount,
-      price: item.node.price,
-      seller: item.node.seller,
-      toAccount: item.node.toAccount,
-      winnerAccount: item.node.winnerAccount,
-      transaction: item.node.transaction,
-    })));
+  if (event_types.length == 0) {
+    event_types = ["AUCTION_CREATED", "OFFER_ENTERED", "AUCTION_SUCCESSFUL"];
   }
+  let events = [];
+  if (event_types.includes("AUCTION_CREATED") || event_types.includes("OFFER_ENTERED")) {
+    const where = {
+      contract_address: parseAddress(collection.contract_address),
+    };
+    if (occurred_after > 0) {
+      where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after).toISOString() }
+    }
+    if (event_types.includes("AUCTION_CREATED")) {
+      if (event_types.includes("OFFER_ENTERED")) {
+        where['type'] = { [Sequelize.Op.in]: [0, 1] }
+      } else {
+        where['type'] = 0;
+      }
+    } else {
+      where['type'] = 1;
+    }
+
+    const orders = await Orders.findAll({
+      where: where,
+      order: [
+        ["order_event_timestamp", "ASC"]
+      ],
+      limit: 20,
+    });
+    if (orders.length > 0) {
+      Array.prototype.push.apply(events, _.map(orders, (item) => ({
+        token_id: parseInt(item.token_id.toString("hex"), 16),
+        price: item.price,
+        from: item.from,
+        order_event_timestamp: item.order_event_timestamp,
+        event_type: item.type == 0 ? "OFFER_ENTERED" : "AUCTION_CREATED"
+      })));
+    }
+  }
+
+  if (event_types.includes("AUCTION_SUCCESSFUL")) {
+    const nftSales = await NFTSales.findAll({
+      where: {
+        offer_token: collection.contract_address,
+        height: {
+          [Sequelize.Op.gte]: 111
+        }
+      },
+      order: [
+        ["height", "ASC"],
+        ["id", "ASC"]
+      ],
+      limit: 20,
+    });
+    if (nftSales.length > 0) {
+      Array.prototype.push.apply(events, _.map(nftSales, (item) => ({
+        token_id: parseInt(item.offer_identifier.toString("hex"), 16),
+        price: item.price,
+        from: item.from,
+        to: item.to,
+        height: item.height,
+        tx_hash: item.tx_hash,
+        event_type: "AUCTION_SUCCESSFUL",
+        order_event_timestamp: "111222333"
+      })));
+    }
+  }
+
+  if (events.length > 0) {
+    const items = await OpenseaItems.findAll({
+      where: {
+        contract_address: collection.contract_address,
+        token_id: events.map(item => parseTokenId(item.token_id))
+      },
+    });
+
+    if (items.length > 0) {
+      const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
+      for (let index in events) {
+        const event = events[index];
+        if (itemMap.has(event.token_id)) {
+          const item = itemMap.get(event.token_id);
+          event.rank = item.traits_rank;
+          event.image_url = item.image_url;
+          event.name = item.name;
+          events[index] = event;
+        } else {
+          event.rank = 0;
+          event.image_url = collection.image_url;
+          event.name = collection.name + " #" + event.token_id;
+        }
+      }
+
+      // todo sort by time, id
+      events = events.slice(20);
+    }
+  }
+
   ctx.body = events;
 });
 
