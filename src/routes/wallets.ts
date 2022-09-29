@@ -102,6 +102,7 @@ const setNFTInfo = async (txs) => {
           if (collctionMap.has(nft.address)) {
             nft.floor_price = collctionMap.get(nft.address).floor_price;
             nft.total_supply = collctionMap.get(nft.address).total_supply;
+            nft.collection_name = collctionMap.get(nft.address).name;
           }
         }
         txs[index] = nft;
