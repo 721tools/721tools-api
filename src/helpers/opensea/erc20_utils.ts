@@ -21,9 +21,19 @@ export const getWethBalance = async (signer, address) => {
     return await erc20Contract.balanceOf(address);
 };
 
+export const getERC20Balance = async (signer, contractAddress, address) => {
+    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, signer);
+    return await erc20Contract.balanceOf(address);
+};
+
 export const approveWeth = async (signer) => {
     const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, signer);
     return await erc20Contract.approve(OpenSeaConduitAddress, BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935"));
+};
+
+export const transferERC20 = async (signer, contractAddress, address, amount) => {
+    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, signer);
+    return await erc20Contract.transfer(address, ethers.utils.parseEther(amount.toString()));
 };
 
 const getWethAddress = () => {
