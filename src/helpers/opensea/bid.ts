@@ -16,7 +16,7 @@ export const preCreateOffer = async (kmsSigner, smartAddress, assetId, price, da
         variables: {
             closedAt: new Date(Math.round(Date.now() + days * 1000 * 60 * 60 * 24)).toISOString(),
             price: {
-                paymentAsset: process.env.NETWORK === 'rinkeby' ? "UGF5bWVudEFzc2V0VHlwZTo0" : "UGF5bWVudEFzc2V0VHlwZTo3OQ==",
+                paymentAsset: process.env.NETWORK === 'goerli' ? "UGF5bWVudEFzc2V0VHlwZTo0NA==" : "UGF5bWVudEFzc2V0VHlwZTo3OQ==",
                 amount: price
             },
             item: {
@@ -26,7 +26,7 @@ export const preCreateOffer = async (kmsSigner, smartAddress, assetId, price, da
         },
     };
     const response = await gotScraping({
-        url: `https://${process.env.NETWORK === 'rinkeby' ? "testnets." : ""}opensea.io/__api/graphql/`,
+        url: `https://${process.env.NETWORK === 'goerli' ? "testnets." : ""}opensea.io/__api/graphql/`,
         body: JSON.stringify(createCollectionOfferActionModalQuery),
         method: 'POST',
         headers: {

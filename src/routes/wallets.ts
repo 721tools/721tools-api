@@ -251,7 +251,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   const user = ctx.session.siwe.user;
-  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
+  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
   const signer = new KmsSigner(user.address, provider);
   if (type == "ETH") {
     const amount = ctx.request.body['amount'];

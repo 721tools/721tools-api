@@ -9,7 +9,7 @@ import _ from 'lodash';
 
 const SmartBuysRouter = new Router({})
 
-const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
+const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
 
 SmartBuysRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;

@@ -16,10 +16,10 @@ export const preCreateCollectionOffer = async (kmsSigner, smartAddress, contract
         variables: {
             assetContract: {
                 contractAddress: contractAddress,
-                chain: process.env.NETWORK === 'rinkeby' ? "RINKEBY" : "ETHEREUM"
+                chain: process.env.NETWORK === 'goerli' ? "GOERLI" : "ETHEREUM"
             },
             price: {
-                paymentAsset: process.env.NETWORK === 'rinkeby' ? "UGF5bWVudEFzc2V0VHlwZTo0" : "UGF5bWVudEFzc2V0VHlwZTo3OQ==",
+                paymentAsset: process.env.NETWORK === 'goerli' ? "UGF5bWVudEFzc2V0VHlwZTo0NA==" : "UGF5bWVudEFzc2V0VHlwZTo3OQ==",
                 amount: price
             },
             closedAt: new Date(Math.round(Date.now() + days * 1000 * 60 * 60 * 24)).toISOString(),
@@ -28,7 +28,7 @@ export const preCreateCollectionOffer = async (kmsSigner, smartAddress, contract
         },
     };
     const response = await gotScraping({
-        url: `https://${process.env.NETWORK === 'rinkeby' ? "testnets." : ""}opensea.io/__api/graphql/`,
+        url: `https://${process.env.NETWORK === 'goerli' ? "testnets." : ""}opensea.io/__api/graphql/`,
         body: JSON.stringify(createCollectionOfferActionModalQuery),
         method: 'POST',
         headers: {
@@ -67,7 +67,7 @@ export const postCreateCollectionOffer = async (preData) => {
         variables: preData
     };
     const response = await gotScraping({
-        url: `https://${process.env.NETWORK === 'rinkeby' ? "testnets." : ""}opensea.io/__api/graphql/`,
+        url: `https://${process.env.NETWORK === 'goerli' ? "testnets." : ""}opensea.io/__api/graphql/`,
         body: JSON.stringify(useHandleBlockchainActionsCreateOrderMutation),
         method: 'POST',
         headers: {
@@ -87,12 +87,12 @@ export const queryCollectionOfferMultiModalBase = async (slug) => {
         id: "CollectionOfferMultiModalBaseQuery",
         query: "query CollectionOfferMultiModalBaseQuery(\n  $collection: CollectionSlug!\n  $chain: ChainScalar!\n) {\n  collection(collection: $collection) {\n    slug\n    verificationStatus\n    ...OfferModal_collectionData\n    id\n  }\n  tradeLimits(chain: $chain) {\n    ...OfferModal_tradeLimits\n  }\n}\n\nfragment OfferModal_collectionData on CollectionType {\n  isTraitOffersEnabled\n  name\n  slug\n  relayId\n  statsV2 {\n    floorPrice {\n      usd\n      symbol\n    }\n  }\n  ...useOfferModalAdapter_collection\n}\n\nfragment OfferModal_tradeLimits on TradeLimitsType {\n  minimumBidUsdPrice\n  ...useOfferModalAdapter_tradeLimits\n}\n\nfragment useOfferModalAdapter_collection on CollectionType {\n  relayId\n  slug\n  paymentAssets {\n    relayId\n    symbol\n    chain {\n      identifier\n    }\n    asset {\n      usdSpotPrice\n      decimals\n      id\n    }\n    isNative\n    ...utils_PaymentAssetOption\n    id\n  }\n  representativeAsset {\n    assetContract {\n      address\n      chain\n      id\n    }\n    id\n  }\n  assetContracts(first: 2) {\n    edges {\n      node {\n        address\n        chain\n        id\n      }\n    }\n  }\n}\n\nfragment useOfferModalAdapter_tradeLimits on TradeLimitsType {\n  minimumBidUsdPrice\n}\n\nfragment utils_PaymentAssetOption on PaymentAssetType {\n  relayId\n  symbol\n  asset {\n    relayId\n    displayImageUrl\n    usdSpotPrice\n    decimals\n    id\n  }\n}\n",
         variables: {
-            chain: process.env.NETWORK === 'rinkeby' ? "RINKEBY" : "ETHEREUM",
+            chain: process.env.NETWORK === 'goerli' ? "GOERLI" : "ETHEREUM",
             collection: slug
         }
     };
     const response = await gotScraping({
-        url: `https://${process.env.NETWORK === 'rinkeby' ? "testnets." : ""}opensea.io/__api/graphql/`,
+        url: `https://${process.env.NETWORK === 'goerli' ? "testnets." : ""}opensea.io/__api/graphql/`,
         body: JSON.stringify(collectionOfferMultiModalBaseQuery),
         method: 'POST',
         headers: {

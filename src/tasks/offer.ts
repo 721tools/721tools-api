@@ -78,7 +78,7 @@ async function main(): Promise<void> {
                 continue;
             }
 
-            const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
+            const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
             const kmsSigner = new KmsSigner(user.address, provider);
 
             const wethBalance = await getWethBalance(kmsSigner, user.smart_address);

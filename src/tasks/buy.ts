@@ -17,7 +17,7 @@ require('../config/env');
 async function main(): Promise<void> {
     const sub = redis.duplicate();
     await sub.connect();
-    const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'rinkeby' ? process.env.RINKEBY_RPC_URL : process.env.ETH_RPC_URL);
+    const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
     await sub.subscribe("OPENSEA-ETH-ORDER-LISTING", async (str) => {
         const message = JSON.parse(str);
         if (message.payload.payload.item.chain.name !== "ethereum" && message.payload.payload.item.chain.name !== process.env.NETWORK) {
@@ -177,7 +177,7 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
     const apiKeys = process.env.OPENSEA_API_KEYS.split(",");
     const openseaSDK = new OpenSeaSDK(provider,
         {
-            networkName: process.env.NETWORK === 'rinkeby' ? Network.Rinkeby : Network.Main,
+            networkName: process.env.NETWORK === 'goerli' ? Network.Rinkeby : Network.Main,
             apiKey: _.sample(apiKeys),
         },
     );
