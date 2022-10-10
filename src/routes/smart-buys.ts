@@ -381,7 +381,7 @@ SmartBuysRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
     },
     offset: (page.valueOf() - 1) * limit.valueOf(),
     limit: limit,
-    order: [Sequelize.literal(`Field(status, 'INIT', 'RUNNING', 'PAUSED', 'FINISHED')`), ['id', 'ASC']]
+    order: [Sequelize.literal(`Field(status, 'INIT', 'RUNNING', 'PAUSED', 'FINISHED')`), ['id', 'DESC']]
   });
   ctx.body = {
     page: page,
