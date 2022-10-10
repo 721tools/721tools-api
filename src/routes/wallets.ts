@@ -4,7 +4,7 @@ import axios from 'axios';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
 
-import { OpenseaCollections, OpenseaItems } from '../dal/db';
+import { OpenseaCollections, OpenseaItems, User } from '../dal/db';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
 import { HttpError } from '../model/http-error';
@@ -276,7 +276,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
       value: ethers.utils.parseEther(amount.toString())
     })
 
-    ctx.body = tx;
+    ctx.body = { tx: tx.hash };
     return;
   }
 
@@ -310,7 +310,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
     }
 
     const tx = await transferERC20(signer, contractAddress, user.smart_address, amount);
-    ctx.body = tx;
+    ctx.body = { tx: tx.hash };
     return;
   }
 
@@ -333,7 +333,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
     }
 
     const tx = await transferERC721(signer, contractAddress, user.smart_address, user.address, tokenId);
-    ctx.body = tx;
+    ctx.body = { tx: tx.hash };
     return;
 
 
