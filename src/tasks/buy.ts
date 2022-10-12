@@ -103,7 +103,7 @@ async function main(): Promise<void> {
             // collection buy by traits and ranks
             if (!_.isEmpty(smartBuy.traits) || (smartBuy.min_rank > 0 && smartBuy.max_rank > 0)) {
 
-                const where = (smartBuy.min_rank > 0 || smartBuy.max_rank > 0) ? {
+                const where = (smartBuy.min_rank > 0 && smartBuy.max_rank > 0) ? {
                     contract_address: collection.contract_address,
                     traits_rank: {
                         [Sequelize.Op.gte]: smartBuy.max_rank,
@@ -177,7 +177,7 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
     const apiKeys = process.env.OPENSEA_API_KEYS.split(",");
     const openseaSDK = new OpenSeaSDK(provider,
         {
-            networkName: process.env.NETWORK === 'goerli' ? Network.Rinkeby : Network.Main,
+            networkName: process.env.NETWORK === 'goerli' ? Network.Goerli : Network.Main,
             apiKey: _.sample(apiKeys),
         },
     );

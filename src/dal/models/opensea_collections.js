@@ -124,7 +124,7 @@ module.exports = class OpenseaCollections extends Model {
         defaultValue: 0
       },
       one_day_volume: {
-        type: DataTypes.DECIMAL(12, 4),
+        type: DataTypes.DECIMAL(16, 8),
         allowNull: false,
         defaultValue: 0.0000
       },
