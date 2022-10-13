@@ -26,12 +26,14 @@ async function main(): Promise<void> {
                 }
             });
 
+            await smartBuy.update({ last_scan_time: new Date() });
+
             const nftSales = await NFTSales.findAll({
                 where: {
                     offer_token: parseAddress(smartBuy.contract_address),
                     to: parseAddress(user.smart_address),
                     timestamp: {
-                        [Sequelize.Op.gte]: smartBuy.create_time
+                        [Sequelize.Op.gte]: smartBuy.last_scan_time
                     },
                 }
             });

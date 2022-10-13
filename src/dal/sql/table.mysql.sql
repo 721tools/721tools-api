@@ -42,6 +42,7 @@ CREATE TABLE `smart_buys` (
   `error_code` varchar(32) NOT NULL DEFAULT '',
   `error_details` varchar(256) NOT NULL DEFAULT '',
   `expiration_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `last_scan_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
