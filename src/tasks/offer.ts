@@ -114,7 +114,7 @@ async function main(): Promise<void> {
 
                 // buy by tokenId
                 if (tokenIds.length > 0) {
-                    await singleBid(kmsSigner, smartBuy, user, smartBuy.token_ids, []);
+                    await singleBid(kmsSigner, smartBuy, user, tokenIds, []);
                     continue;
                 }
             }
@@ -266,7 +266,7 @@ async function main(): Promise<void> {
 }
 
 const singleBid = async (kmsSigner, smartBuy, user, tokenIds, items) => {
-    if (!items) {
+    if (items.length == 0) {
         items = await OpenseaItems.findAll({
             where: {
                 contract_address: parseAddress(smartBuy.contract_address),
@@ -292,7 +292,7 @@ const singleBid = async (kmsSigner, smartBuy, user, tokenIds, items) => {
         user_id: user.id,
         contract_address: smartBuy.contract_address,
         smart_buy_id: smartBuy.id,
-        type: SmartBuyType[SmartBuyType.COLLECTION_OFFER]
+        type: SmartBuyType[SmartBuyType.OFFER]
     });
 
 }
