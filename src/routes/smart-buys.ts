@@ -1,5 +1,4 @@
 import Router from 'koa-router';
-import { ethers } from "ethers";
 import Sequelize from 'sequelize';
 import { OpenseaCollections, SmartBuys, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
@@ -8,8 +7,6 @@ import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
 import _ from 'lodash';
 
 const SmartBuysRouter = new Router({})
-
-const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
 
 SmartBuysRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
@@ -105,7 +102,6 @@ SmartBuysRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     status: SmartBuyStatus[SmartBuyStatus.INIT],
     traits: ctx.request.body['traits'],
     token_ids: JSON.stringify(ctx.request.body['token_ids']),
-    block_height: await provider.getBlockNumber(),
   });
   ctx.body = {}
 });

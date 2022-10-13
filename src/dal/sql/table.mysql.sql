@@ -41,7 +41,6 @@ CREATE TABLE `smart_buys` (
   `status` varchar(16) NOT NULL DEFAULT '',
   `error_code` varchar(32) NOT NULL DEFAULT '',
   `error_details` varchar(256) NOT NULL DEFAULT '',
-  `block_height` bigint NOT NULL,
   `expiration_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),

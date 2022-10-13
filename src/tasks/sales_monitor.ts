@@ -30,9 +30,9 @@ async function main(): Promise<void> {
                 where: {
                     offer_token: parseAddress(smartBuy.contract_address),
                     to: parseAddress(user.smart_address),
-                    height: {
-                        [Sequelize.Op.gte]: smartBuy.block_height
-                    }
+                    timestamp: {
+                        [Sequelize.Op.gte]: smartBuy.create_time
+                    },
                 }
             });
             if (nftSales && nftSales.length == 0) {
