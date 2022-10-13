@@ -109,6 +109,16 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            if (smartBuy.token_ids) {
+                const tokenIds = JSON.parse(smartBuy.token_ids);
+
+                // buy by tokenId
+                if (tokenIds.length > 0) {
+                    await singleBid(kmsSigner, smartBuy, user, smartBuy.token_ids, []);
+                    continue;
+                }
+            }
+
 
             // collection offer
             if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
@@ -248,14 +258,6 @@ async function main(): Promise<void> {
                 if (tokenIds.size > 0) {
                     await singleBid(kmsSigner, smartBuy, user, tokenIds, []);
                     continue;
-                }
-            }
-
-            // offer by token id
-            if (smartBuy.token_ids) {
-                const tokenIds = JSON.parse(smartBuy.token_ids);
-                if (tokenIds.length > 0) {
-                    await singleBid(kmsSigner, smartBuy, user, smartBuy.token_ids, []);
                 }
             }
             continue
