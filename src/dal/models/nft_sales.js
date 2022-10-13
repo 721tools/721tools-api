@@ -49,6 +49,16 @@ module.exports = class NFTSales extends Model {
       direction: {
         type: DataTypes.TINYINT,
       },
+      timestamp: {
+        type: DataTypes.DATE(6),
+        allowNull: false,
+        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
+      },
+      created_at: {
+        type: DataTypes.DATE(6),
+        allowNull: true,
+        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
+      },
     }, {
       sequelize,
       tableName: 'nft_sales',

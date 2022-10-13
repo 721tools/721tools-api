@@ -223,7 +223,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       contract_address: collection.contract_address,
     };
     if (occurred_after > 0) {
-      where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after).toISOString() }
+      where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after) }
     }
     if (event_types.includes("AUCTION_CREATED")) {
       if (event_types.includes("OFFER_ENTERED")) {
@@ -258,8 +258,8 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
     const nftSales = await NFTSales.findAll({
       where: {
         offer_token: collection.contract_address,
-        height: {
-          [Sequelize.Op.gte]: 111
+        timestamp: {
+          [Sequelize.Op.gte]: new Date(occurred_after)
         }
       },
       order: [
@@ -277,7 +277,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         height: item.height,
         tx_hash: '0x' + Buffer.from(item.tx_hash, 'binary').toString('hex'),
         event_type: "AUCTION_SUCCESSFUL",
-        order_event_timestamp: "111222333"
+        order_event_timestamp: item.timestamp
       })));
     }
   }
@@ -306,7 +306,6 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
           event.name = collection.name + " #" + event.token_id;
         }
       }
-
       // todo sort by time, id
       // events = events.slice(20);
     }
