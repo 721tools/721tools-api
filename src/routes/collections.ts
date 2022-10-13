@@ -248,7 +248,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
         from: '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
-        order_event_timestamp: item.order_event_timestamp.getTime(),
+        event_timestamp: item.order_event_timestamp.getTime(),
         event_type: item.type == 0 ? "OFFER_ENTERED" : "AUCTION_CREATED"
       })));
     }
@@ -277,7 +277,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         height: item.height,
         tx_hash: '0x' + Buffer.from(item.tx_hash, 'binary').toString('hex'),
         event_type: "AUCTION_SUCCESSFUL",
-        order_event_timestamp: item.timestamp.getTime()
+        event_timestamp: item.timestamp.getTime()
       })));
     }
   }
@@ -306,8 +306,15 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
           event.name = collection.name + " #" + event.token_id;
         }
       }
-      // todo sort by time, id
-      // events = events.slice(20);
+
+      events.sort(function (a, b) {
+        if (a.event_timestamp === b.event_timestamp) {
+          return b.id - a.id;
+        }
+        return a.event_timestamp > b.event_timestamp ? 1 : -1;
+      });
+
+      events = events.slice(0, 20);
     }
   }
 
