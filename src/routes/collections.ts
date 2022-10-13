@@ -248,7 +248,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
         from: '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
-        order_event_timestamp: item.order_event_timestamp,
+        order_event_timestamp: item.order_event_timestamp.getTime(),
         event_type: item.type == 0 ? "OFFER_ENTERED" : "AUCTION_CREATED"
       })));
     }
@@ -277,7 +277,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         height: item.height,
         tx_hash: '0x' + Buffer.from(item.tx_hash, 'binary').toString('hex'),
         event_type: "AUCTION_SUCCESSFUL",
-        order_event_timestamp: item.timestamp
+        order_event_timestamp: item.timestamp.getTime()
       })));
     }
   }
