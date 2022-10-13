@@ -95,12 +95,27 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            if (smartBuy.token_ids) {
+                const tokenIds = JSON.parse(smartBuy.token_ids);
+
+                // buy by tokenId
+                if (tokenIds.length > 0) {
+                    if (tokenIds.includes(tokenId)) {
+                        await buy(user, provider, contractAddress, tokenId, price);
+                        continue;
+                    }
+                    continue;
+                }
+            }
+
+
+
             // collection buy
             if (_.isEmpty(smartBuy.traits) && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
                 await buy(user, provider, contractAddress, tokenId, price);
                 continue;
             }
-            // collection buy by traits and ranks
+            // buy by traits and ranks
             if (!_.isEmpty(smartBuy.traits) || (smartBuy.min_rank > 0 && smartBuy.max_rank > 0)) {
 
                 const where = (smartBuy.min_rank > 0 && smartBuy.max_rank > 0) ? {
@@ -152,15 +167,6 @@ async function main(): Promise<void> {
                         await buy(user, provider, contractAddress, tokenId, price);
                         continue;
                     }
-                }
-            }
-
-            // offer by token id
-            if (smartBuy.token_ids) {
-                const tokenIds = JSON.parse(smartBuy.token_ids);
-                if (tokenIds.includes(tokenId)) {
-                    await buy(user, provider, contractAddress, tokenId, price);
-                    continue;
                 }
             }
 
