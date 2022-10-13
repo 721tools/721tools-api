@@ -311,7 +311,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         if (a.event_timestamp === b.event_timestamp) {
           return b.id - a.id;
         }
-        return a.event_timestamp > b.event_timestamp ? 1 : -1;
+        return b.event_timestamp > a.event_timestamp ? 1 : -1;
       });
 
       events = events.slice(0, 20);
