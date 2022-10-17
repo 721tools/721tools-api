@@ -1,7 +1,8 @@
 import Sequelize from 'sequelize';
 import { ethers } from "ethers";
 import _ from 'underscore';
-import { OpenSeaSDK, Network } from 'opensea-js';
+import { gotScraping } from 'got-scraping';
+import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
 import { redis } from '../dal/mq';
 import { SmartBuys, User, OpenseaCollections, OpenseaItems } from '../dal/db';
@@ -12,6 +13,12 @@ import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { KmsSigner } from '../helpers/kms/kms-signer';
 
 require('../config/env');
+
+const limiterFlexible = new RateLimiterMemory({
+    points: 1,
+    duration: 10,
+})
+const limiterQueue = new RateLimiterQueue(limiterFlexible);
 
 
 async function main(): Promise<void> {
@@ -179,29 +186,102 @@ async function main(): Promise<void> {
 
 
 const buy = async (user, provider, contractAddress, tokenId, price) => {
-    const kmsSigner = new KmsSigner(user.address, provider);
-    const apiKeys = process.env.OPENSEA_API_KEYS.split(",");
-    const openseaSDK = new OpenSeaSDK(provider,
-        {
-            networkName: process.env.NETWORK === 'goerli' ? Network.Goerli : Network.Main,
-            apiKey: _.sample(apiKeys),
+    await limiterQueue.removeTokens(1);
+    // https://api.opensea.io/v2/orders/ethereum/seaport/listings?asset_contract_address=0xd532b88607b1877fe20c181cba2550e3bbd6b31c&order_by=eth_price&order_direction=asc&token_ids=5852&limit=1&format=json
+    const response = await gotScraping({
+        url: `https://api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&token_ids=${tokenId}&order_by=eth_price&order_direction=asc&limit=1&format=json`,
+        headers: {
+            'content-type': 'application/json',
         },
-    );
-
-    // https://api.opensea.io/v2/orders/ethereum/seaport/listings?asset_contract_address=0xc9677cd8e9652f1b1aadd3429769b0ef8d7a0425&format=json&order_by=eth_price&order_direction=desc&token_ids=1159
-    const orders = await openseaSDK.api.getOrders({
-        assetContractAddress: contractAddress,
-        tokenId,
-        side: "ask"
     });
-
-    if (orders.orders.length > 0) {
-        const currentPrice = parseFloat(ethers.utils.formatUnits(orders.orders[0].currentPrice, 'ether'));
-        if (currentPrice <= price) {
-            const transactionHash = await openseaSDK.fulfillOrder({ order: orders.orders[0], accountAddress: user.smart_address });
-        }
+    if (response.statusCode != 200) {
+        console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} error`, response.body);
+        return false;
     }
+    const orders = JSON.parse(response.body).orders;
+    if (!orders || orders.length < 1) {
+        console.log(`Get no order for token ${contractAddress}#${tokenId}`, response.body);
+    }
+
+    const order = orders[0];
+
+    const currentPrice = parseFloat(ethers.utils.formatUnits(order.current_price, 'ether'));
+    if (currentPrice <= price) {
+        const basicOrderParameters = getBasicOrderParametersFromOrder(order);
+
+        const abi = [
+            'function fulfillBasicOrder(tuple(' +
+            '        address considerationToken,' +
+            '        uint256 considerationIdentifier,' +
+            '        uint256 considerationAmount,' +
+            '        address offerer,' +
+            '        address zone,' +
+            '        address offerToken,' +
+            '        uint256 offerIdentifier,' +
+            '        uint256 offerAmount,' +
+            '        uint8 basicOrderType,' +
+            '        uint256 startTime,' +
+            '        uint256 endTime,' +
+            '        bytes32 zoneHash,' +
+            '        uint256 salt,' +
+            '        bytes32 offererConduitKey,' +
+            '        bytes32 fulfillerConduitKey,' +
+            '        uint256 totalOriginalAdditionalRecipients,' +
+            '        (uint256 amount, address recipient)[] additionalRecipients,' +
+            '        bytes signature ) parameters) external payable returns (bool fulfilled)'
+        ];
+
+        const kmsSigner = new KmsSigner(user.address, provider);
+        const contract = new ethers.Contract("0x00000000006c3852cbEf3e08E8dF289169EdE581", abi, kmsSigner);
+        const tx = await contract.fulfillBasicOrder(basicOrderParameters, { value: ethers.BigNumber.from(order.current_price) });
+        const tr = await tx.wait();
+        console.log(tr);
+    }
+
 };
+
+const getBasicOrderParametersFromOrder = (order) => {
+    const basicOrderParameters = {
+        considerationToken: '0x0000000000000000000000000000000000000000',
+        considerationIdentifier: ethers.BigNumber.from('0'),
+        considerationAmount: undefined,
+        offerer: undefined,
+        zone: '0x004C00500000aD104D7DBd00e3ae0A5C00560C00',
+        offerToken: undefined,
+        offerIdentifier: undefined,
+        offerAmount: 1,
+        basicOrderType: 2,
+        startTime: undefined,
+        endTime: undefined,
+        zoneHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        salt: undefined,
+        offererConduitKey: '0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000',
+        fulfillerConduitKey: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        totalOriginalAdditionalRecipients: undefined,
+        additionalRecipients: [],
+        signature: undefined
+    }
+    basicOrderParameters.offerer = ethers.utils.getAddress(order.maker.address);
+    basicOrderParameters.offerToken = order.protocol_data.parameters.offer[0].token;
+    basicOrderParameters.offerIdentifier = ethers.BigNumber.from(order.protocol_data.parameters.offer[0].identifierOrCriteria);
+    basicOrderParameters.startTime = order.listing_time;
+    basicOrderParameters.endTime = order.expiration_time;
+    basicOrderParameters.salt = order.protocol_data.parameters.salt;
+    basicOrderParameters.totalOriginalAdditionalRecipients = order.protocol_data.parameters.totalOriginalConsiderationItems - 1
+    basicOrderParameters.signature = order.protocol_data.signature;
+    for (const consider of order.protocol_data.parameters.consideration) {
+        if (consider.recipient === basicOrderParameters.offerer) {
+            basicOrderParameters.considerationAmount = ethers.BigNumber.from(consider.startAmount);
+            continue;
+        }
+
+        basicOrderParameters.additionalRecipients.push({
+            amount: ethers.BigNumber.from(consider.startAmount),
+            recipient: consider.recipient
+        });
+    }
+    return basicOrderParameters;
+}
 
 main();
 
