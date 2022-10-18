@@ -16,7 +16,7 @@ require('../config/env');
 
 const limiterFlexible = new RateLimiterMemory({
     points: 1,
-    duration: 10,
+    duration: 0.2,
 })
 const limiterQueue = new RateLimiterQueue(limiterFlexible);
 
@@ -90,12 +90,12 @@ async function main(): Promise<void> {
                     contract_address: parseAddress(smartBuy.contract_address)
                 }
             });
-            if (!collection) {
-                continue;
-            }
-            if (collection.status == 1) {
-                continue;
-            }
+            // if (!collection) {
+            //     continue;
+            // }
+            // if (collection.status == 1) {
+            //     continue;
+            // }
 
             const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(user.smart_address)));
             if (balance < price) {
@@ -189,7 +189,7 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
     await limiterQueue.removeTokens(1);
     // https://api.opensea.io/v2/orders/ethereum/seaport/listings?asset_contract_address=0xd532b88607b1877fe20c181cba2550e3bbd6b31c&order_by=eth_price&order_direction=asc&token_ids=5852&limit=1&format=json
     const response = await gotScraping({
-        url: `https://api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&token_ids=${tokenId}&order_by=eth_price&order_direction=asc&limit=1&format=json`,
+        url: `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&token_ids=${tokenId}&order_by=eth_price&order_direction=asc&limit=1&format=json`,
         headers: {
             'content-type': 'application/json',
         },
@@ -232,10 +232,14 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
         ];
 
         const kmsSigner = new KmsSigner(user.address, provider);
-        const contract = new ethers.Contract("0x00000000006c3852cbEf3e08E8dF289169EdE581", abi, kmsSigner);
+        const contract = new ethers.Contract(order.protocol_address, abi, kmsSigner);
         const tx = await contract.fulfillBasicOrder(basicOrderParameters, { value: ethers.BigNumber.from(order.current_price) });
         const tr = await tx.wait();
-        console.log(tr);
+        if (tr.status == 1) {
+            console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} success, hash ${tr.transactionHash}`);
+        } else {
+            console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} error, hash ${tr.transactionHash}`);
+        }
     }
 
 };
@@ -243,40 +247,45 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
 const getBasicOrderParametersFromOrder = (order) => {
     const basicOrderParameters = {
         considerationToken: '0x0000000000000000000000000000000000000000',
-        considerationIdentifier: ethers.BigNumber.from('0'),
+        considerationIdentifier: 0,
         considerationAmount: undefined,
         offerer: undefined,
-        zone: '0x004C00500000aD104D7DBd00e3ae0A5C00560C00',
+        zone: undefined,
         offerToken: undefined,
         offerIdentifier: undefined,
         offerAmount: 1,
         basicOrderType: 2,
         startTime: undefined,
         endTime: undefined,
-        zoneHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        zoneHash: undefined,
         salt: undefined,
-        offererConduitKey: '0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000',
-        fulfillerConduitKey: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        offererConduitKey: undefined,
+        fulfillerConduitKey: undefined,
         totalOriginalAdditionalRecipients: undefined,
         additionalRecipients: [],
         signature: undefined
     }
     basicOrderParameters.offerer = ethers.utils.getAddress(order.maker.address);
+    basicOrderParameters.zone = order.protocol_data.parameters.zone;
     basicOrderParameters.offerToken = order.protocol_data.parameters.offer[0].token;
-    basicOrderParameters.offerIdentifier = ethers.BigNumber.from(order.protocol_data.parameters.offer[0].identifierOrCriteria);
+    basicOrderParameters.offerIdentifier = order.protocol_data.parameters.offer[0].identifierOrCriteria;
     basicOrderParameters.startTime = order.listing_time;
     basicOrderParameters.endTime = order.expiration_time;
+    basicOrderParameters.basicOrderType = order.protocol_data.parameters.orderType;
+    basicOrderParameters.zoneHash = order.protocol_data.parameters.zoneHash;
     basicOrderParameters.salt = order.protocol_data.parameters.salt;
+    basicOrderParameters.offererConduitKey = order.protocol_data.parameters.conduitKey;
+    basicOrderParameters.fulfillerConduitKey = order.protocol_data.parameters.conduitKey;
     basicOrderParameters.totalOriginalAdditionalRecipients = order.protocol_data.parameters.totalOriginalConsiderationItems - 1
     basicOrderParameters.signature = order.protocol_data.signature;
     for (const consider of order.protocol_data.parameters.consideration) {
         if (consider.recipient === basicOrderParameters.offerer) {
-            basicOrderParameters.considerationAmount = ethers.BigNumber.from(consider.startAmount);
+            basicOrderParameters.considerationAmount = consider.startAmount;
             continue;
         }
 
         basicOrderParameters.additionalRecipients.push({
-            amount: ethers.BigNumber.from(consider.startAmount),
+            amount: consider.startAmount,
             recipient: consider.recipient
         });
     }
