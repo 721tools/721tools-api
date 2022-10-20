@@ -1,8 +1,9 @@
 import Sequelize from 'sequelize';
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 import _ from 'underscore';
 import { gotScraping } from 'got-scraping';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
+import { FlashbotsBundleProvider, FlashbotsBundleResolution } from '@flashbots/ethers-provider-bundle';
 
 import { redis } from '../dal/mq';
 import { SmartBuys, User, OpenseaCollections, OpenseaItems } from '../dal/db';
@@ -232,14 +233,53 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
         ];
 
         const kmsSigner = new KmsSigner(user.address, provider);
-        const contract = new ethers.Contract(order.protocol_address, abi, kmsSigner);
-        const tx = await contract.fulfillBasicOrder(basicOrderParameters, { value: ethers.BigNumber.from(order.current_price) });
-        const tr = await tx.wait();
-        if (tr.status == 1) {
-            console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} success, hash ${tr.transactionHash}`);
-        } else {
-            console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} error, hash ${tr.transactionHash}`);
+        // const contract = new ethers.Contract(order.protocol_address, abi, kmsSigner);
+        // const tx = await contract.fulfillBasicOrder(basicOrderParameters, { value: ethers.BigNumber.from(order.current_price) });
+        // const tr = await tx.wait();
+        // if (tr.status == 1) {
+        //     console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} success, hash ${tr.transactionHash}`);
+        // } else {
+        //     console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} error, hash ${tr.transactionHash}`);
+        // }
+
+
+        const flashbotsProvider = await FlashbotsBundleProvider.create(provider, kmsSigner,
+            process.env.NETWORK === 'goerli' ? "https://relay-goerli.flashbots.net" : "https://relay.flashbots.ne"
+        );
+
+        const iface = new ethers.utils.Interface(abi)
+        const calldata = iface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
+
+        const baseFee = (await provider.getBlock("latest")).baseFeePerGas as BigNumber;
+
+        const signedTransactions = await flashbotsProvider.signBundle([{
+            transaction: {
+                chainId: process.env.NETWORK === 'goerli' ? 5 : 1,
+                value: ethers.BigNumber.from(order.current_price),
+                data: calldata,
+                to: order.protocol_address,
+                gasPrice: baseFee.mul(13).div(10),
+            },
+            signer: kmsSigner
+        }]);
+
+        const blockNumber = await provider.getBlockNumber();
+        const BLOCKS_IN_FUTURE = 1;
+        const targetBlockNumber = blockNumber + BLOCKS_IN_FUTURE;
+
+        const bundleResponse = await flashbotsProvider.sendRawBundle(signedTransactions, targetBlockNumber);
+        if ('error' in bundleResponse) {
+            throw new Error(bundleResponse.error.message)
         }
+        const bundleResolution = await bundleResponse.wait()
+        if (bundleResolution === FlashbotsBundleResolution.BundleIncluded) {
+            console.log(`Congrats, included in ${targetBlockNumber}`)
+        } else if (bundleResolution === FlashbotsBundleResolution.BlockPassedWithoutInclusion) {
+            console.log(`Not included in ${targetBlockNumber}`)
+        } else if (bundleResolution === FlashbotsBundleResolution.AccountNonceTooHigh) {
+            console.log(`Nonce too high, bailing`)
+        }
+
     }
 
 };
