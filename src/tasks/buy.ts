@@ -91,12 +91,12 @@ async function main(): Promise<void> {
                     contract_address: parseAddress(smartBuy.contract_address)
                 }
             });
-            // if (!collection) {
-            //     continue;
-            // }
-            // if (collection.status == 1) {
-            //     continue;
-            // }
+            if (!collection) {
+                continue;
+            }
+            if (collection.status == 1) {
+                continue;
+            }
 
             const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(user.smart_address)));
             if (balance < price) {
