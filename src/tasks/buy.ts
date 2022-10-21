@@ -5,7 +5,6 @@ import { gotScraping } from 'got-scraping';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 import { FlashbotsBundleProvider, FlashbotsBundleResolution } from '@flashbots/ethers-provider-bundle';
 
-import { redis } from '../dal/mq';
 import { SmartBuys, User, OpenseaCollections, OpenseaItems } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { UserType } from '../model/user-type';
@@ -14,6 +13,8 @@ import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { KmsSigner } from '../helpers/kms/kms-signer';
 
 require('../config/env');
+
+import { redis } from '../dal/mq';
 
 const limiterFlexible = new RateLimiterMemory({
     points: 1,
