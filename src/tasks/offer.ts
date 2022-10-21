@@ -15,8 +15,6 @@ import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { KmsSigner } from '../helpers/kms/kms-signer';
 import { getWethAllowance, getWethBalance, approveWeth } from '../helpers/opensea/erc20_utils';
 
-require('../config/env');
-
 async function main(): Promise<void> {
     while (true) {
         const smartBuys = await SmartBuys.findAll({

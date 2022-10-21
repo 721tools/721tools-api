@@ -5,8 +5,6 @@ import { SmartBuys, User, OpenseaCollections, OpenseaItems, NFTSales } from '../
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 
-require('../config/env');
-
 async function main(): Promise<void> {
     while (true) {
         const smartBuys = await SmartBuys.findAll({

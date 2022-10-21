@@ -12,8 +12,6 @@ import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 
 import { KmsSigner } from '../helpers/kms/kms-signer';
 
-require('../config/env');
-
 import { redis } from '../dal/mq';
 
 const limiterFlexible = new RateLimiterMemory({
