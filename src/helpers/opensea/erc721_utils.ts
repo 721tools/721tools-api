@@ -14,3 +14,8 @@ export const transferERC721 = async (signer, contractAddress, tokenId, from, to)
     const erc721Contract = new ethers.Contract(contractAddress, genericErc721Abi, signer);
     return await erc721Contract.safeTransferFrom(from, to, tokenId);
 };
+
+export const estimateTransferERC721 = async (signer, contractAddress, tokenId, from, to) => {
+    const erc721Contract = new ethers.Contract(contractAddress, genericErc721Abi, signer);
+    return await erc721Contract.estimateGas.safeTransferFrom(from, to, tokenId);
+};

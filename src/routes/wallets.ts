@@ -4,13 +4,13 @@ import axios from 'axios';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
 
-import { OpenseaCollections, OpenseaItems, User } from '../dal/db';
+import { OpenseaCollections, OpenseaItems } from '../dal/db';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
 import { HttpError } from '../model/http-error';
 import { KmsSigner } from '../helpers/kms/kms-signer';
-import { getERC20Balance, transferERC20 } from '../helpers/opensea/erc20_utils';
-import { haveToken, transferERC721 } from '../helpers/opensea/erc721_utils';
+import { getERC20Balance, transferERC20, estimateTransferERC20 } from '../helpers/opensea/erc20_utils';
+import { haveToken, transferERC721, estimateTransferERC721 } from '../helpers/opensea/erc721_utils';
 
 const WalletsRouter = new Router({});
 const Op = Sequelize.Op;
@@ -349,6 +349,116 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 
 });
 
+
+WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, async (ctx) => {
+  const type = ctx.request.body['type'];
+  if (!type) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.BAD_REQUEST]
+    }
+    return;
+  }
+
+  const user = ctx.session.siwe.user;
+  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
+  const signer = new KmsSigner(user.address, provider);
+  if (type == "ETH") {
+    const amount = ctx.request.body['amount'];
+    if (!amount || amount <= 0) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.BAD_REQUEST]
+      }
+      return;
+    }
+
+    const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(user.smart_address)));
+    if (balance < amount) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.INSUFFICIENT_BALANCE]
+      }
+      return;
+    }
+    const gasLimit = await signer.estimateGas({
+      to: user.address,
+      value: ethers.utils.parseEther(amount.toString())
+    });
+
+    ctx.body = await getGas(provider, gasLimit);
+    return;
+  }
+
+
+  const contractAddress = ctx.request.body['contract_address'];
+  if (!contractAddress) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.BAD_REQUEST]
+    }
+    return;
+  }
+
+  if (type == "ERC20") {
+    const amount = ctx.request.body['amount'];
+    if (!amount || amount <= 0) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.BAD_REQUEST]
+      }
+      return;
+    }
+
+    const erc20Balance = parseFloat(ethers.utils.formatEther(await getERC20Balance(signer, contractAddress, user.smart_address)));
+    if (erc20Balance < amount) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.INSUFFICIENT_BALANCE]
+      }
+      return;
+    }
+
+    const gasLimit = await estimateTransferERC20(signer, contractAddress, user.smart_address, amount);
+    ctx.body = await getGas(provider, gasLimit);
+    return;
+  }
+
+  const tokenId = ctx.request.body['token_id'];
+  if (!tokenId) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.BAD_REQUEST]
+    }
+    return;
+  }
+
+  if (type == "ERC721") {
+    if (! await haveToken(signer, contractAddress, tokenId, user.smart_address)) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.DONT_HAVE_TOKEN]
+      }
+      return;
+    }
+
+    const gasLimit = await estimateTransferERC721(signer, contractAddress, user.smart_address, user.address, tokenId);
+    ctx.body = await getGas(provider, gasLimit);
+    return;
+
+
+  } else if (type == "ERC1155") {
+    //   const withdrawERC1155 = async (contractAddress, tokenIds, quantities) => {
+    //     const iface = new ethers.utils.Interface(genericErc1155Abi);
+    //     const calldata = iface.encodeFunctionData("safeBatchTransferFrom", [address, signer.getOwnerAddress(), tokenIds, quantities, "0x"]);
+    //     const tx = await signer.sendTransaction({ to: contractAddress, data: calldata });
+    //     const tr = await tx.wait();
+    //     console.log(tr);
+    // }
+  }
+
+});
+
 const getNumberParam = (param, ctx) => {
   let paramValue: number = 0;
   if (param in ctx.request.query) {
@@ -359,5 +469,12 @@ const getNumberParam = (param, ctx) => {
   }
   return paramValue;
 };
+
+const getGas = async (provider, gasLimit) => {
+  const gasPrice = await provider.getGasPrice();
+
+  const totalGas = parseFloat(parseFloat(ethers.utils.formatUnits(gasLimit.mul(gasPrice), 'ether')).toFixed(6));
+  return { gas_limit: gasLimit.toNumber(), gas_price: gasPrice.toNumber(), totalGas: totalGas };
+}
 
 module.exports = WalletsRouter;
