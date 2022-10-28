@@ -368,7 +368,8 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 });
 
 
-WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, async (ctx) => {
+// WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, async (ctx) => {
+WalletsRouter.post('/withdraw/estimate_gas', requireWhitelist, async (ctx) => {
   const type = ctx.request.body['type'];
   if (!type) {
     ctx.status = 400;

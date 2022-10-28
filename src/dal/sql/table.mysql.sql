@@ -60,3 +60,14 @@ CREATE TABLE `smart_buy_logs` (
   PRIMARY KEY (`id`),
   INDEX (`user_id`, `contract_address`, `smart_buy_id`, `type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `whitelist`;
+CREATE TABLE `whitelist` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `address` varchar(64) NOT NULL DEFAULT '',
+  `owner` varchar(16) NOT NULL DEFAULT '',
+  `remark` varchar(32) NOT NULL DEFAULT '',
+  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`address`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

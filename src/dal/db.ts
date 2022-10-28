@@ -42,5 +42,6 @@ export const {
   User,
   SmartBuys,
   SmartBuyLogs,
+  Whitelist,
   NFTSales,
 } = initModels(sequelize, assetsSequelize)

@@ -1,7 +1,6 @@
 import { HttpError } from '../model/http-error';
 import { ethers } from "ethers";
-import fs from "fs";
-import { User } from '../dal/db';
+import { User, Whitelist } from '../dal/db';
 import { UserType } from '../model/user-type';
 
 export const requireLogin = async (ctx, next) => {
@@ -79,8 +78,10 @@ export const requireMember = async (ctx, next) => {
 }
 
 export const addressIsWhitelist = async (address) => {
-    const whitelistAddress = fs.readFileSync(require.resolve('./address.txt'), "utf8").split(/\r?\n/);
-    return whitelistAddress.includes(address);
+    const count = await Whitelist.count({
+        address: address
+    });
+    return count > 0;
 }
 
 export const isWhitelist = async (ctx) => {
