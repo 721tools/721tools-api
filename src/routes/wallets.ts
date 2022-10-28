@@ -264,16 +264,34 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
     }
 
     const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(user.smart_address)));
-    if (balance <= amount) {
+    if (balance < amount) {
       ctx.status = 400;
       ctx.body = {
         error: HttpError[HttpError.INSUFFICIENT_BALANCE]
       }
       return;
     }
-    const tx = await signer.sendTransaction({
+
+    const gasLimit = await signer.estimateGas({
       to: user.address,
       value: ethers.utils.parseEther(amount.toString())
+    });
+
+    const gasPrice = await provider.getGasPrice();
+
+    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(gasPrice), 'ether'));
+    if (balance < amount + totalGas) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.INSUFFICIENT_BALANCE]
+      }
+      return;
+    }
+
+    const tx = await signer.sendTransaction({
+      to: user.address,
+      value: ethers.utils.parseEther(amount.toString()),
+      gasPrice: gasPrice,
     })
 
     ctx.body = { tx: tx.hash };
