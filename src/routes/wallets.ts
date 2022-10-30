@@ -290,7 +290,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 
     const tx = await signer.sendTransaction({
       to: user.address,
-      value: ethers.utils.parseEther(amount.toString()),
+      value: ethers.utils.parseEther((amount - amount).toString()),
       gasPrice: gasPrice,
     })
 
@@ -368,8 +368,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 });
 
 
-// WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, async (ctx) => {
-WalletsRouter.post('/withdraw/estimate_gas', requireWhitelist, async (ctx) => {
+WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, async (ctx) => {
   const type = ctx.request.body['type'];
   if (!type) {
     ctx.status = 400;
