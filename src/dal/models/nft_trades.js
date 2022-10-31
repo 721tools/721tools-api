@@ -3,7 +3,7 @@ const { Model } = _sequelize;
 
 module.exports = class NFTTrades extends Model {
   static init(sequelize, DataTypes) {
-    return super.init({
+    const model = super.init({
       height: {
         type: DataTypes.BIGINT,
         allowNull: false,
@@ -11,7 +11,8 @@ module.exports = class NFTTrades extends Model {
       tx_hash: {
         type: DataTypes.STRING(66),
         allowNull: false,
-        defaultValue: ""
+        defaultValue: "",
+        primaryKey: true,
       },
       logIndex: {
         type: DataTypes.INTEGER,
@@ -53,11 +54,12 @@ module.exports = class NFTTrades extends Model {
       direction: {
         type: DataTypes.TINYINT,
       },
-
     }, {
       sequelize,
       tableName: 'nft_trades',
       timestamps: false,
     });
-  }
+    model.removeAttribute("id");
+    return model;
+  };
 }
