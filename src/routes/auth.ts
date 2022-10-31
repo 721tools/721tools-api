@@ -158,4 +158,9 @@ AuthRouter.post("/login", async (ctx) => {
   }
 });
 
+AuthRouter.post("/logout", requireLogin, async (ctx) => {
+  ctx.session = null;
+  ctx.body = {};
+});
+
 module.exports = AuthRouter;
