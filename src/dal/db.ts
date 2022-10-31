@@ -19,14 +19,14 @@ const assetsSequelize = new Sequelize(ASSETS_DB_NAME, ASSETS_DB_USER, ASSETS_DB_
   host: ASSETS_DB_HOST,
   port: ASSETS_DB_PORT,
   dialect: 'mysql',
-  logging: true,
+  logging: false,
 })
 
 const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASS, {
   host: DB_HOST,
   port: DB_PORT,
   dialect: 'mysql',
-  logging: true,
+  logging: false,
 })
 
 // todo:
