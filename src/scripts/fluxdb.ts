@@ -1,12 +1,12 @@
-import { NFTSales } from '../dal/db';
+import { NFTTrades } from '../dal/db';
 
-const main =async () => {
-    const { rows, count } = await NFTSales.findAndCountAll({
-        limit: 100,
-      });
+const main = async () => {
+  const { rows, count } = await NFTTrades.findAndCountAll({
+    limit: 100,
+  });
 
-    console.log(rows);
-    console.log(count);
+  console.log(rows);
+  console.log(count);
 }
 
 main();

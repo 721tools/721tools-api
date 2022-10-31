@@ -3,7 +3,7 @@ import Sequelize from 'sequelize';
 import { ethers } from 'ethers';
 
 import _ from 'underscore';
-import { OpenseaCollections, Orders, NFTSales, OpenseaItems } from '../dal/db';
+import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress, parseTokenId } from "../helpers/binary_utils";
 
@@ -255,9 +255,9 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
   }
 
   if (event_types.includes("AUCTION_SUCCESSFUL")) {
-    const nftSales = await NFTSales.findAll({
+    const nftTrades = await NFTTrades.findAll({
       where: {
-        offer_token: collection.contract_address,
+        address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
         timestamp: {
           [Sequelize.Op.gte]: new Date(occurred_after)
         }
@@ -268,14 +268,14 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       ],
       limit: 20,
     });
-    if (nftSales.length > 0) {
-      Array.prototype.push.apply(events, _.map(nftSales, (item) => ({
-        token_id: parseInt(item.offer_identifier.toString("hex"), 16),
-        price: item.price,
-        from: '0x' + Buffer.from(item.from, 'binary').toString('hex'),
-        to: '0x' + Buffer.from(item.to, 'binary').toString('hex'),
+    if (nftTrades.length > 0) {
+      Array.prototype.push.apply(events, _.map(nftTrades, (item) => ({
+        token_id: item.tokenId,
+        price: item.priceETH,
+        from: item.seller,
+        to: item.buyer,
         height: item.height,
-        tx_hash: '0x' + Buffer.from(item.tx_hash, 'binary').toString('hex'),
+        tx_hash: item.tx_hash,
         event_type: "AUCTION_SUCCESSFUL",
         event_timestamp: item.timestamp.getTime()
       })));

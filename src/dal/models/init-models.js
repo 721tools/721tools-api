@@ -8,7 +8,7 @@ const _User = require('./user.js');
 const _SmartBuys = require('./smart_buys.js');
 const _SmartBuyLogs = require('./smart_buy_logs.js');
 const _Whitelist = require('./whitelist.js');
-const _NFTSales = require('./nft_sales.js')
+const _NFTTrades = require('./nft_trades.js')
 
 
 
@@ -16,7 +16,7 @@ const initModels = (sequelize, assetsSequelize) => {
   const OpenseaCollections = _OpenseaCollections.init(assetsSequelize, DataTypes);
   const OpenseaItems = _OpenseaItems.init(assetsSequelize, DataTypes);
   const Orders = _Orders.init(assetsSequelize, DataTypes);
-  const NFTSales = _NFTSales.init(assetsSequelize, DataTypes);
+  const NFTTrades = _NFTTrades.init(assetsSequelize, DataTypes);
   const User = _User.init(sequelize, DataTypes);
   const SmartBuys = _SmartBuys.init(sequelize, DataTypes);
   const SmartBuyLogs = _SmartBuyLogs.init(sequelize, DataTypes);
@@ -31,7 +31,7 @@ const initModels = (sequelize, assetsSequelize) => {
     SmartBuys,
     SmartBuyLogs,
     Whitelist,
-    NFTSales,
+    NFTTrades,
   };
 }
 
