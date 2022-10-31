@@ -264,7 +264,6 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       },
       order: [
         ["height", "DESC"],
-        ["timestamp", "DESC"]
       ],
       limit: 20,
     });
