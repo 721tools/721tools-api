@@ -1,5 +1,5 @@
 const _sequelize = require("sequelize");
-const { Model } = _sequelize;
+const { Model, Sequelize } = _sequelize;
 
 module.exports = class NFTTrades extends Model {
   static init(sequelize, DataTypes) {
@@ -7,6 +7,11 @@ module.exports = class NFTTrades extends Model {
       height: {
         type: DataTypes.BIGINT,
         allowNull: false,
+      },
+      timestamp: {
+        type: DataTypes.DATE(6),
+        allowNull: false,
+        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
       },
       tx_hash: {
         type: DataTypes.STRING(66),
