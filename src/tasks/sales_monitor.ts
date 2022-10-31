@@ -1,7 +1,7 @@
 import Sequelize from 'sequelize';
 import _ from 'underscore';
 
-import { SmartBuys, User, OpenseaCollections, OpenseaItems, NFTSales } from '../dal/db';
+import { SmartBuys, User, OpenseaCollections, OpenseaItems, NFTTrades } from '../dal/db';
 import { SmartBuyStatus } from '../model/smart-buy-status';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 
@@ -26,26 +26,24 @@ async function main(): Promise<void> {
 
             await smartBuy.update({ last_scan_time: new Date() });
 
-            const nftSales = await NFTSales.findAll({
+            const nftTrades = await NFTTrades.findAll({
                 where: {
-                    offer_token: parseAddress(smartBuy.contract_address),
-                    to: parseAddress(user.smart_address),
+                    address: smartBuy.contract_address,
+                    buyer: user.smart_address,
                     timestamp: {
                         [Sequelize.Op.gte]: smartBuy.last_scan_time
                     },
                 }
             });
-            if (nftSales && nftSales.length == 0) {
+            if (nftTrades && nftTrades.length == 0) {
                 continue;
             }
 
             let purchased = 0;
-            for (const nftSale of nftSales) {
-                const tokenId = parseTokenId(nftSale.offer_identifier);
-                const amount = parseInt(nftSale.offer_amount.toString("hex"), 16);
+            for (const nftTrade of nftTrades) {
                 // collection offer
                 if (!smartBuy.traits && smartBuy.min_rank == 0 && smartBuy.max_rank == 0) {
-                    purchased += amount;
+                    purchased += nftTrade.amount;
                     continue;
                 }
                 // collection offer by traits
@@ -53,7 +51,7 @@ async function main(): Promise<void> {
                     const item = await OpenseaItems.findOne({
                         where: {
                             contract_address: parseAddress(smartBuy.contract_address),
-                            token_id: nftSale.offer_identifier
+                            token_id: parseTokenId(nftTrade.tokenId)
                         }
                     });
                     if (item && item.traits) {
@@ -80,7 +78,7 @@ async function main(): Promise<void> {
                             }
                         }
                         if (allContains) {
-                            purchased += amount;
+                            purchased += nftTrade.amount;
                             continue;
                         }
                     }
@@ -122,11 +120,11 @@ async function main(): Promise<void> {
                                 [Sequelize.Op.gte]: smartBuy.max_rank,
                                 [Sequelize.Op.lte]: smartBuy.min_rank
                             },
-                            token_id: nftSale.offer_identifier
+                            token_id: parseTokenId(nftTrade.tokenId)
                         },
                     });
                     if (items.length > 0) {
-                        purchased += amount;
+                        purchased += nftTrade.amount;
                         continue;
                     }
                 }
@@ -134,8 +132,8 @@ async function main(): Promise<void> {
                 // offer by token id
                 if (smartBuy.token_ids) {
                     const tokenIds = JSON.parse(smartBuy.token_ids);
-                    if (tokenIds.includes(tokenId)) {
-                        purchased += amount;
+                    if (tokenIds.includes(nftTrade.tokenId)) {
+                        purchased += nftTrade.amount;
                         continue;
                     }
                 }
