@@ -264,7 +264,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       },
       order: [
         ["height", "DESC"],
-        ["id", "DESC"]
+        ["timestamp", "DESC"]
       ],
       limit: 20,
     });
@@ -275,6 +275,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         from: item.seller,
         to: item.buyer,
         height: item.height,
+        logIndex: item.logIndex,
         tx_hash: item.tx_hash,
         event_type: "AUCTION_SUCCESSFUL",
         event_timestamp: item.timestamp.getTime()
@@ -308,8 +309,8 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       }
 
       events.sort(function (a, b) {
-        if (a.event_timestamp === b.event_timestamp) {
-          return b.id - a.id;
+        if (a.event_timestamp === b.event_timestamp && a.event_type == b.event_type && a.event_type == "AUCTION_SUCCESSFUL") {
+          return b.logIndex - a.logIndex;
         }
         return b.event_timestamp > a.event_timestamp ? 1 : -1;
       });
