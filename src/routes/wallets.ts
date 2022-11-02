@@ -290,7 +290,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 
     const tx = await signer.sendTransaction({
       to: user.address,
-      value: ethers.utils.parseEther((amount - amount).toString()),
+      value: ethers.utils.parseEther((amount - totalGas).toString()),
       gasPrice: gasPrice,
     })
 
