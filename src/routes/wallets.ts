@@ -277,21 +277,24 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
       value: ethers.utils.parseEther(amount.toString())
     });
 
-    const gasPrice = await provider.getGasPrice();
+    const feeData = await provider.getFeeData();
 
-    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(gasPrice), 'ether'));
-    if (balance < amount + totalGas) {
+    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
+
+    if (amount < totalGas) {
       ctx.status = 400;
       ctx.body = {
-        error: HttpError[HttpError.INSUFFICIENT_BALANCE]
+        error: HttpError[HttpError.AMOUNT_TOO_LOW]
       }
       return;
     }
 
+
     const tx = await signer.sendTransaction({
       to: user.address,
       value: ethers.utils.parseEther((amount - totalGas).toString()),
-      gasPrice: gasPrice,
+      maxFeePerGas: feeData.maxFeePerGas,
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
     })
 
     ctx.body = { tx: tx.hash };

@@ -41,7 +41,7 @@ export class KmsSigner extends ethers.Signer {
         return Promise.resolve(this.ethereumAddress);
     }
 
-    _signDigest = async (digestString) => {
+    signDigest = async (digestString) => {
         try {
             const response = await axios.post(`${process.env.KMS_SIGNER_URL}/sign`, {
                 address: this.ownerAddress,
@@ -62,13 +62,14 @@ export class KmsSigner extends ethers.Signer {
 
 
     signMessage = async (message) => {
-        return this._signDigest(ethers.utils.hashMessage(message));
+        return this.signDigest(ethers.utils.hashMessage(message));
     }
 
     signTransaction = async (transaction) => {
+        console.log(transaction);
         const unsignedTx = await ethers.utils.resolveProperties(transaction);
         const serializedTx = ethers.utils.serializeTransaction(unsignedTx);
-        const transactionSignature = await this._signDigest(ethers.utils.keccak256(serializedTx));
+        const transactionSignature = await this.signDigest(ethers.utils.keccak256(serializedTx));
         return ethers.utils.serializeTransaction(unsignedTx, transactionSignature);
     }
 

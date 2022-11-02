@@ -47,7 +47,7 @@ export const preCreateCollectionOffer = async (kmsSigner, smartAddress, contract
     const createCollectionOfferActions = data.data.blockchain.createCollectionOfferActions;
     const method = createCollectionOfferActions.length > 1 ? createCollectionOfferActions[1].method : createCollectionOfferActions[0].method;
     const eip712Hash = TypedDataUtils.eip712Hash(JSON.parse(method.clientMessage), SignTypedDataVersion.V4);
-    const clientSignature = await kmsSigner._signDigest(eip712Hash.toString('hex'));
+    const clientSignature = await kmsSigner.signDigest(eip712Hash.toString('hex'));
     if (!clientSignature) {
         return {
             errors: "Sign error"
