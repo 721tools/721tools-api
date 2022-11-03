@@ -1,6 +1,8 @@
 import { ethers } from "ethers";
 import axios from 'axios';
 
+import { SignType } from '../../model/sign-type';
+
 export class KmsSigner extends ethers.Signer {
 
     ethereumAddress = null;
@@ -41,14 +43,57 @@ export class KmsSigner extends ethers.Signer {
         return Promise.resolve(this.ethereumAddress);
     }
 
-    signDigest = async (digestString) => {
+    signDigest = async (digestString, transaction) => {
+        console.log(transaction);
+        if (!transaction.customData || !transaction.customData.signType) {
+            console.error(`Sign error, not sign type`);
+            return null;
+        }
+
+        const signType = transaction.customData.signType;
+        const signContent = {
+            address: this.ownerAddress,
+            data: digestString,
+            signType: signType,
+            to: transaction.to,
+            value: transaction.value,
+            maxFeePerGas: transaction.maxFeePerGas,
+            maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
+            nonce: transaction.nonce,
+            gasLimit: transaction.gasLimit,
+            chainId: transaction.chainId,
+            sendTo: null,
+        }
+        switch (signType) {
+            case SignType[SignType.WITHDRAW_ETH]:
+                if (transaction.to != this.ownerAddress) {
+                    console.error(`Sign error, only can be sent to the owner`);
+                    return null;
+                }
+                signContent.to = transaction.to;
+                break;
+            case SignType[SignType.WITHDRAW_ERC20]:
+                if (transaction.to != this.ownerAddress) {
+                    console.error(`Sign error, only can be sent to the owner`);
+                    return null;
+                }
+                break;
+
+            case SignType[SignType.OS_BID]:
+                break;
+
+            default:
+                console.error('Not known sign type!');
+                return null;
+        }
+
+
         try {
-            const response = await axios.post(`${process.env.KMS_SIGNER_URL}/sign`, {
-                address: this.ownerAddress,
-                data: digestString
-            }, {
+            console.log(signContent);
+            const response = await axios.post(`${process.env.KMS_SIGNER_URL}/sign`, signContent, {
                 timeout: 10000
             });
+            console.log(response.data.data);
             return response.data.data;
         } catch (error) {
             if (error.response) {
@@ -62,14 +107,13 @@ export class KmsSigner extends ethers.Signer {
 
 
     signMessage = async (message) => {
-        return this.signDigest(ethers.utils.hashMessage(message));
+        return this.signDigest(ethers.utils.hashMessage(message), message);
     }
 
     signTransaction = async (transaction) => {
-        console.log(transaction);
         const unsignedTx = await ethers.utils.resolveProperties(transaction);
         const serializedTx = ethers.utils.serializeTransaction(unsignedTx);
-        const transactionSignature = await this.signDigest(ethers.utils.keccak256(serializedTx));
+        const transactionSignature = await this.signDigest(ethers.utils.keccak256(serializedTx), unsignedTx);
         return ethers.utils.serializeTransaction(unsignedTx, transactionSignature);
     }
 

@@ -1,6 +1,7 @@
 import { gotScraping } from 'got-scraping';
-import { TypedDataUtils, SignTypedDataVersion } from '@metamask/eth-sig-util';
+import { TypedDataUtils, SignTypedDataVersion, signTypedData } from '@metamask/eth-sig-util';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
+import { SignType } from '../../model/sign-type';
 
 const limiterFlexible = new RateLimiterMemory({
     points: 1,
@@ -44,8 +45,14 @@ export const preCreateOffer = async (kmsSigner, smartAddress, assetId, price, da
     }
     const createCollectionOfferActions = data.data.blockchain.createCollectionOfferActions;
     const method = createCollectionOfferActions.length > 1 ? createCollectionOfferActions[1].method : createCollectionOfferActions[0].method;
-    const eip712Hash = TypedDataUtils.eip712Hash(JSON.parse(method.clientMessage), SignTypedDataVersion.V4);
-    const clientSignature = await kmsSigner.signDigest(eip712Hash.toString('hex'));
+    // const eip712Hash = TypedDataUtils.eip712Hash(JSON.parse(method.clientMessage), SignTypedDataVersion.V4);
+    // const digest = eip712Hash.toString("hex");
+
+    const clientSignature = await kmsSigner.signDigest(method.clientMessage, {
+        customData: {
+            signType: SignType[SignType.OS_BID]
+        }
+    });
     if (!clientSignature) {
         return {
             errors: "Sign error"
