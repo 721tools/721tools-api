@@ -4,4 +4,5 @@ export enum SignType {
     WITHDRAW_ERC1155,
     OS_BID,
     OS_BUY,
+    OS_APPROVE_ERC20,
 }

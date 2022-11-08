@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { ethers, BigNumber } from "ethers";
+import { SignType } from '../../model/sign-type';
 
 const genericErc20Abi = fs.readFileSync(path.join(__dirname, '../../abis/ERC20.json')).toString();
 
@@ -28,8 +29,12 @@ export const getERC20Balance = async (signer, contractAddress, address) => {
 };
 
 export const approveWeth = async (signer) => {
-    const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, signer);
-    return await erc20Contract.approve(OpenSeaConduitAddress, BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935"));
+    return await signer.sendTransaction({
+        to: getWethAddress(),
+        customData: {
+            signType: SignType[SignType.OS_APPROVE_ERC20], value: BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
+        },
+    })
 };
 
 export const transferERC20 = async (signer, contractAddress, address, amount) => {
