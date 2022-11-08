@@ -77,15 +77,23 @@ export class KmsSigner extends ethers.Signer {
                 break;
 
             case SignType[SignType.WITHDRAW_ERC20]:
-                const to = transaction.customData.to;
-                if (to != this.ownerAddress) {
+                if (transaction.customData.to != this.ownerAddress) {
                     console.error(`Sign error, only can be sent to the owner`);
                     return null;
                 }
-                signContent.sendTo = to;
+                signContent.sendTo = transaction.customData.to;
                 signContent.value = transaction.customData.amount;
                 break;
 
+            case SignType[SignType.WITHDRAW_ERC721]:
+                if (transaction.customData.to != this.ownerAddress) {
+                    console.error(`Sign error, only can be sent to the owner`);
+                    return null;
+                }
+                signContent.sendTo = transaction.customData.to;
+                signContent['from'] = transaction.customData.from;
+                signContent['tokenId'] = transaction.customData.tokenId;
+                break;
             case SignType[SignType.OS_BID]:
                 signContent.data = transaction.data;
                 break;
@@ -96,6 +104,7 @@ export class KmsSigner extends ethers.Signer {
         }
 
         try {
+            console.log(signContent);
             const response = await axios.post(`${process.env.KMS_SIGNER_URL}/sign`, signContent, {
                 timeout: 10000
             });

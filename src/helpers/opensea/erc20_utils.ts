@@ -13,18 +13,18 @@ const OpenSeaConduitAddress = "0x1E0049783F008A0085193E00003D00cd54003c71";
 // [Kovan Testnet] WETH address: 0xd0A1E359811322d97991E03f863a0C30C2cF029C
 // [Goerli Testnet] WETH address: 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6
 
-export const getWethAllowance = async (signer, address) => {
-    const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, signer);
+export const getWethAllowance = async (provider, address) => {
+    const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, provider);
     return await erc20Contract.allowance(address, OpenSeaConduitAddress);
 };
 
-export const getWethBalance = async (signer, address) => {
-    const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, signer);
+export const getWethBalance = async (provider, address) => {
+    const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, provider);
     return await erc20Contract.balanceOf(address);
 };
 
-export const getERC20Balance = async (signer, contractAddress, address) => {
-    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, signer);
+export const getERC20Balance = async (provider, contractAddress, address) => {
+    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, provider);
     return await erc20Contract.balanceOf(address);
 };
 
@@ -47,8 +47,8 @@ export const transferERC20 = async (signer, contractAddress, address, amount) =>
     });
 };
 
-export const estimateTransferERC20 = async (signer, contractAddress, address, amount) => {
-    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, signer);
+export const estimateTransferERC20 = async (provider, contractAddress, address, amount) => {
+    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, provider);
     return await erc20Contract.estimateGas.transfer(address, ethers.utils.parseEther(amount.toString()));
 };
 

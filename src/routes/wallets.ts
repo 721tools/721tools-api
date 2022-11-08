@@ -4,7 +4,7 @@ import axios from 'axios';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
 
-import { OpenseaCollections, OpenseaItems, User } from '../dal/db';
+import { OpenseaCollections, OpenseaItems } from '../dal/db';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
 import { HttpError } from '../model/http-error';
@@ -240,8 +240,7 @@ WalletsRouter.get('/:address/txs', async (ctx) => {
   }
 });
 
-// WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
-WalletsRouter.post('/withdraw', async (ctx) => {
+WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
   const type = ctx.request.body['type'];
   if (!type) {
     ctx.status = 400;
@@ -251,12 +250,7 @@ WalletsRouter.post('/withdraw', async (ctx) => {
     return;
   }
 
-  // const user = ctx.session.siwe.user;
-  const user = await User.findOne({
-    where: {
-      id: 1
-    }
-  });
+  const user = ctx.session.siwe.user;
   const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
   const signer = new KmsSigner(user.address, provider);
   if (type == "ETH") {
@@ -278,7 +272,8 @@ WalletsRouter.post('/withdraw', async (ctx) => {
       return;
     }
 
-    const gasLimit = await signer.estimateGas({
+    const gasLimit = await provider.estimateGas({
+      from: user.smart_address,
       to: user.address,
       value: ethers.utils.parseEther(amount.toString())
     });
@@ -307,7 +302,6 @@ WalletsRouter.post('/withdraw', async (ctx) => {
     return;
   }
 
-
   const contractAddress = ctx.request.body['contract_address'];
   if (!contractAddress) {
     ctx.status = 400;
@@ -327,7 +321,7 @@ WalletsRouter.post('/withdraw', async (ctx) => {
       return;
     }
 
-    const erc20Balance = parseFloat(ethers.utils.formatEther(await getERC20Balance(signer, contractAddress, user.smart_address)));
+    const erc20Balance = parseFloat(ethers.utils.formatEther(await getERC20Balance(provider, contractAddress, user.smart_address)));
     if (erc20Balance < amount) {
       ctx.status = 400;
       ctx.body = {
@@ -351,7 +345,7 @@ WalletsRouter.post('/withdraw', async (ctx) => {
   }
 
   if (type == "ERC721") {
-    if (! await haveToken(signer, contractAddress, tokenId, user.smart_address)) {
+    if (! await haveToken(provider, contractAddress, tokenId, user.smart_address)) {
       ctx.status = 400;
       ctx.body = {
         error: HttpError[HttpError.DONT_HAVE_TOKEN]
@@ -386,14 +380,8 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
     return;
   }
 
-  // const user = ctx.session.siwe.user;
-  const user = await User.findOne({
-    where: {
-      id: 1
-    }
-  });
+  const user = ctx.session.siwe.user;
   const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-  const signer = new KmsSigner(user.address, provider);
   if (type == "ETH") {
     const amount = ctx.request.body['amount'];
     if (!amount || amount <= 0) {
@@ -412,7 +400,8 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
       }
       return;
     }
-    const gasLimit = await signer.estimateGas({
+    const gasLimit = await provider.estimateGas({
+      from: user.smart_address,
       to: user.address,
       value: ethers.utils.parseEther(amount.toString())
     });
@@ -441,7 +430,7 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
       return;
     }
 
-    const erc20Balance = parseFloat(ethers.utils.formatEther(await getERC20Balance(signer, contractAddress, user.smart_address)));
+    const erc20Balance = parseFloat(ethers.utils.formatEther(await getERC20Balance(provider, contractAddress, user.smart_address)));
     if (erc20Balance < amount) {
       ctx.status = 400;
       ctx.body = {
@@ -450,7 +439,7 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
       return;
     }
 
-    const gasLimit = await estimateTransferERC20(signer, contractAddress, user.address, amount);
+    const gasLimit = await estimateTransferERC20(provider, contractAddress, user.address, amount);
     ctx.body = await getGas(provider, gasLimit);
     return;
   }
@@ -465,7 +454,7 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
   }
 
   if (type == "ERC721") {
-    if (! await haveToken(signer, contractAddress, tokenId, user.smart_address)) {
+    if (! await haveToken(provider, contractAddress, tokenId, user.smart_address)) {
       ctx.status = 400;
       ctx.body = {
         error: HttpError[HttpError.DONT_HAVE_TOKEN]
@@ -473,7 +462,7 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
       return;
     }
 
-    const gasLimit = await estimateTransferERC721(signer, contractAddress, user.smart_address, user.address, tokenId);
+    const gasLimit = await estimateTransferERC721(provider, contractAddress, user.smart_address, user.address, tokenId);
     ctx.body = await getGas(provider, gasLimit);
     return;
 
