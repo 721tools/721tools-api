@@ -49,11 +49,11 @@ export const preCreateCollectionOffer = async (kmsSigner, smartAddress, contract
     const method = createCollectionOfferActions.length > 1 ? createCollectionOfferActions[1].method : createCollectionOfferActions[0].method;
     // const eip712Hash = TypedDataUtils.eip712Hash(JSON.parse(method.clientMessage), SignTypedDataVersion.V4);
     // const digest = eip712Hash.toString("hex");
-    console.log(method.clientMessage);
-    const clientSignature = await kmsSigner.signDigest(method.clientMessage, {
+    const clientSignature = await kmsSigner.signDigest({
         customData: {
-            signType: SignType[SignType.OS_BID]
-        }
+            signType: SignType[SignType.OS_BID],
+        },
+        data: method.clientMessage,
     });
     if (!clientSignature) {
         return {

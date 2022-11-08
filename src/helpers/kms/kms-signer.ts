@@ -62,7 +62,7 @@ export class KmsSigner extends ethers.Signer {
             chainId: transaction.chainId,
             sendTo: null,
             type: transaction.type,
-            data: null,
+            data: transaction.data,
         }
         switch (signType) {
             case SignType[SignType.WITHDRAW_ETH]:
@@ -99,9 +99,9 @@ export class KmsSigner extends ethers.Signer {
             return response.data.data;
         } catch (error) {
             if (error.response) {
-                console.error(`Sign error`, (await error).response.data.message);
+                console.error(`Sign error,`, (await error).response.data.message);
             } else {
-                console.error(`Sign error`, error.toString());
+                console.error(`Sign error,`, error.toString());
             }
             return null;
         }

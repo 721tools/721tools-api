@@ -48,10 +48,11 @@ export const preCreateOffer = async (kmsSigner, smartAddress, assetId, price, da
     // const eip712Hash = TypedDataUtils.eip712Hash(JSON.parse(method.clientMessage), SignTypedDataVersion.V4);
     // const digest = eip712Hash.toString("hex");
 
-    const clientSignature = await kmsSigner.signDigest(method.clientMessage, {
+    const clientSignature = await kmsSigner.signDigest({
         customData: {
-            signType: SignType[SignType.OS_BID]
-        }
+            signType: SignType[SignType.OS_BID],
+        },
+        data: method.clientMessage,
     });
     if (!clientSignature) {
         return {

@@ -53,12 +53,12 @@ async function main(): Promise<void> {
                     contract_address: parseAddress(smartBuy.contract_address)
                 }
             });
-            // if (!collection) {
-            //     continue;
-            // }
-            // if (collection.status == 1) {
-            //     continue;
-            // }
+            if (!collection) {
+                continue;
+            }
+            if (collection.status == 1) {
+                continue;
+            }
 
             const count = await SmartBuyLogs.count({
                 where: {
@@ -80,7 +80,6 @@ async function main(): Promise<void> {
             const kmsSigner = new KmsSigner(user.address, provider);
 
             const wethBalance = await getWethBalance(kmsSigner, user.smart_address);
-            console.log(wethBalance);
             if (wethBalance.lt(ethers.utils.parseEther(smartBuy.price))) {
                 const ethBalance = await provider.getBalance(user.smart_address);
                 if (ethBalance.lt(ethers.utils.parseEther(smartBuy.price))) {
@@ -90,7 +89,6 @@ async function main(): Promise<void> {
             }
 
             const wethAllowance = await getWethAllowance(kmsSigner, user.smart_address);
-            console.log(wethAllowance);
 
             if (wethAllowance.lte(BigNumber.from(0))) {
                 try {
