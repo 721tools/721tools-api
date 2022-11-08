@@ -4,10 +4,11 @@ import axios from 'axios';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
 
-import { OpenseaCollections, OpenseaItems } from '../dal/db';
+import { OpenseaCollections, OpenseaItems, User } from '../dal/db';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
 import { HttpError } from '../model/http-error';
+import { SignType } from '../model/sign-type';
 import { KmsSigner } from '../helpers/kms/kms-signer';
 import { getERC20Balance, transferERC20, estimateTransferERC20 } from '../helpers/opensea/erc20_utils';
 import { haveToken, transferERC721, estimateTransferERC721 } from '../helpers/opensea/erc721_utils';
@@ -239,8 +240,8 @@ WalletsRouter.get('/:address/txs', async (ctx) => {
   }
 });
 
-
-WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
+// WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
+WalletsRouter.post('/withdraw', async (ctx) => {
   const type = ctx.request.body['type'];
   if (!type) {
     ctx.status = 400;
@@ -250,7 +251,12 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
-  const user = ctx.session.siwe.user;
+  // const user = ctx.session.siwe.user;
+  const user = await User.findOne({
+    where: {
+      id: 1
+    }
+  });
   const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
   const signer = new KmsSigner(user.address, provider);
   if (type == "ETH") {
@@ -280,7 +286,6 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
     const feeData = await provider.getFeeData();
 
     const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
-
     if (amount < totalGas) {
       ctx.status = 400;
       ctx.body = {
@@ -292,9 +297,10 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 
     const tx = await signer.sendTransaction({
       to: user.address,
-      value: ethers.utils.parseEther((amount - totalGas).toString()),
+      value: ethers.utils.parseEther((amount - totalGas).toFixed(6)),
       maxFeePerGas: feeData.maxFeePerGas,
       maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+      customData: { signType: SignType[SignType.WITHDRAW_ETH] },
     })
 
     ctx.body = { tx: tx.hash };
@@ -330,7 +336,7 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
       return;
     }
 
-    const tx = await transferERC20(signer, contractAddress, user.smart_address, amount);
+    const tx = await transferERC20(signer, contractAddress, user.address, ethers.utils.parseEther(amount.toString()));
     ctx.body = { tx: tx.hash };
     return;
   }
@@ -370,7 +376,6 @@ WalletsRouter.post('/withdraw', requireLogin, requireWhitelist, async (ctx) => {
 
 });
 
-
 WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, async (ctx) => {
   const type = ctx.request.body['type'];
   if (!type) {
@@ -381,7 +386,12 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
     return;
   }
 
-  const user = ctx.session.siwe.user;
+  // const user = ctx.session.siwe.user;
+  const user = await User.findOne({
+    where: {
+      id: 1
+    }
+  });
   const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
   const signer = new KmsSigner(user.address, provider);
   if (type == "ETH") {
@@ -440,7 +450,7 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
       return;
     }
 
-    const gasLimit = await estimateTransferERC20(signer, contractAddress, user.smart_address, amount);
+    const gasLimit = await estimateTransferERC20(signer, contractAddress, user.address, amount);
     ctx.body = await getGas(provider, gasLimit);
     return;
   }

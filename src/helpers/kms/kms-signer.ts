@@ -77,10 +77,13 @@ export class KmsSigner extends ethers.Signer {
                 break;
 
             case SignType[SignType.WITHDRAW_ERC20]:
-                if (transaction.to != this.ownerAddress) {
+                const to = transaction.customData.to;
+                if (to != this.ownerAddress) {
                     console.error(`Sign error, only can be sent to the owner`);
                     return null;
                 }
+                signContent.sendTo = to;
+                signContent.value = transaction.customData.amount;
                 break;
 
             case SignType[SignType.OS_BID]:

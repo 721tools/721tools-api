@@ -34,12 +34,17 @@ export const approveWeth = async (signer) => {
         customData: {
             signType: SignType[SignType.OS_APPROVE_ERC20], value: BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
         },
-    })
+    });
 };
 
+
 export const transferERC20 = async (signer, contractAddress, address, amount) => {
-    const erc20Contract = new ethers.Contract(contractAddress, genericErc20Abi, signer);
-    return await erc20Contract.transfer(address, ethers.utils.parseEther(amount.toString()));
+    return await signer.sendTransaction({
+        to: contractAddress,
+        customData: {
+            signType: SignType[SignType.WITHDRAW_ERC20], to: address, amount: amount,
+        },
+    });
 };
 
 export const estimateTransferERC20 = async (signer, contractAddress, address, amount) => {
