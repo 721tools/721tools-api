@@ -6,6 +6,7 @@ import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress, parseTokenId } from "../helpers/binary_utils";
+const clickhouse = require('../dal/clickhouse');
 
 const CollectionsRouter = new Router({})
 
@@ -129,6 +130,13 @@ CollectionsRouter.get('/:slug', async (ctx) => {
       error: HttpError[HttpError.NOT_VALID_SLUG]
     }
     return;
+  };
+
+  const clickHouseQuery = `select * from opensea_collections_history where contract_address = '${'0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')}' and create_time > now() - interval 24 hour order by id desc limit 10`;
+  const historys = await clickhouse.query(clickHouseQuery).toPromise();
+  let history = null;
+  if (historys && historys.length > 0) {
+    history = historys[historys.length - 1];
   }
 
   ctx.body = {
@@ -159,6 +167,9 @@ CollectionsRouter.get('/:slug', async (ctx) => {
     traits: collection.traits,
     verified: collection.verified,
     rarity_enabled: collection.rarity_enabled,
+    one_day_market_cap_change: history ? collection.market_cap - history.market_cap : 0,
+    one_day_num_owners_change: history ? collection.num_owners - history.num_owners : 0,
+    one_day_floor_price_change: history ? collection.floor_price - history.floor_price : 0,
   }
 });
 
