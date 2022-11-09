@@ -97,6 +97,9 @@ export class KmsSigner extends ethers.Signer {
             case SignType[SignType.OS_BID]:
                 signContent.data = transaction.data;
                 break;
+            case SignType[SignType.OS_BUY]:
+                signContent.data = transaction.customData.data;
+                break;
 
             default:
                 console.error('Not known sign type!');
@@ -104,7 +107,6 @@ export class KmsSigner extends ethers.Signer {
         }
 
         try {
-            console.log(signContent);
             const response = await axios.post(`${process.env.KMS_SIGNER_URL}/sign`, signContent, {
                 timeout: 10000
             });
