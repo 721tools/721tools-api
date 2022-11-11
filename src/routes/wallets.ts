@@ -64,7 +64,6 @@ const setRank = async (nfts) => {
           const item = itemMap.get(nft.token_address + nft.token_id);
           nft.rank = item.traits_rank;
           nft.image_url = item.image_url;
-          nft.rank = 0;
         } else {
           nft.name = nft.name + " #" + nft.token_id;
         }

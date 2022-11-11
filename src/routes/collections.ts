@@ -7,6 +7,7 @@ import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress, parseTokenId } from "../helpers/binary_utils";
 const clickhouse = require('../dal/clickhouse');
+const Op = Sequelize.Op;
 
 const CollectionsRouter = new Router({})
 
@@ -382,7 +383,7 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
   const query = `select * from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${start_time})  and timestamp < FROM_UNIXTIME(${end_time})`;
 
   const rows = await clickhouse.query(query).toPromise();
-  ctx.body = rows.map(item => {
+  const items = rows.map(item => {
     return {
       token_id: item.tokenId,
       plateform: item.plateform,
@@ -400,7 +401,43 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
     }
   });
 
+  await setItemInfo(items, collection);
+  ctx.body = items;
 });
+
+const setItemInfo = async (items, collection) => {
+  if (items && items.length > 0) {
+    const selectTokens = [];
+    for (const item of items) {
+      selectTokens.push(parseTokenId(item.token_id));
+    }
+    const itemsRes = await OpenseaItems.findAll({
+      where: {
+        contract_address: collection.contract_address,
+        token_id: selectTokens
+      }
+    });
+
+    if (itemsRes && itemsRes.length > 0) {
+      const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
+      for (let index in items) {
+        const nft = items[index];
+        if (itemMap.has(nft.token_id)) {
+          const item = itemMap.get(nft.token_id);
+          nft.rank = item.traits_rank;
+          nft.image = item.image_url;
+          nft.name = item.name;
+        } else {
+          nft.name = collection.name + " #" + nft.token_id;
+          nft.image = collection.image_url;
+          nft.rank = 0;
+        }
+        items[index] = nft;
+      }
+    }
+  }
+  return items;
+}
 
 const getNumberQueryParam = (param, ctx) => {
   let paramValue: number = 0;
