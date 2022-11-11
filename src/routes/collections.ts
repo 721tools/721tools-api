@@ -334,6 +334,74 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
 });
 
 
+CollectionsRouter.get('/:slug/sales', async (ctx) => {
+  let slug = ctx.params.slug;
+  if (!slug) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.NO_COLLECTION_FOUND]
+    }
+    return;
+  }
+
+  let criteria = {};
+  if (slug.lastIndexOf("0x") === 0 && ethers.utils.isAddress(slug)) {
+    criteria = {
+      contract_address: Buffer.from(slug.slice(2), 'hex')
+    }
+  } else {
+    criteria = {
+      slug: slug
+    }
+  }
+  const collection = await OpenseaCollections.findOne({
+    where: criteria
+  });
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  let start_time = getNumberQueryParam('start_time', ctx);
+  if (start_time <= 0) {
+    start_time = new Date().getTime() - 7 * 24 * 3600 * 1000;
+  }
+  start_time = Math.floor(start_time / 1000);
+
+  let end_time = getNumberQueryParam('end_time', ctx);
+  if (end_time <= 0) {
+    end_time = new Date().getTime();
+  }
+
+  end_time = Math.floor(end_time / 1000);
+
+  const contract_address = "0x" + Buffer.from(collection.contract_address, 'binary').toString('hex');
+  const query = `select * from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${start_time})  and timestamp < FROM_UNIXTIME(${end_time})`;
+
+  const rows = await clickhouse.query(query).toPromise();
+  ctx.body = rows.map(item => {
+    return {
+      token_id: item.tokenId,
+      plateform: item.plateform,
+      is_bundle: item.isBundle,
+      buyer: item.buyer,
+      seller: item.seller,
+      amount: item.amount,
+      price_eth: item.priceETH,
+      direction: item.direction,
+      tx_hash: item.tx_hash,
+      height: item.height,
+      timestamp: new Date(item.timestamp).getTime(),
+      image: "",
+      rank: 0
+    }
+  });
+
+});
+
 const getNumberQueryParam = (param, ctx) => {
   let paramValue: number = 0;
   if (param in ctx.request.query) {
