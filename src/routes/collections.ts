@@ -102,6 +102,59 @@ CollectionsRouter.get('/', async (ctx) => {
   }
 });
 
+CollectionsRouter.get('/highlighted', async (ctx) => {
+  let limit = getNumberQueryParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 20;
+  }
+  if (limit > 50) {
+    limit = 50;
+  }
+
+  const orders = await Orders.findAll({
+    where: {
+      type: 1,
+    },
+    attributes: [
+      [Sequelize.fn('DISTINCT', Sequelize.col('contract_address')), 'contract_address'],
+    ],
+    order: [
+      ["create_time", "DESC"]
+    ],
+    limit: limit,
+  });
+
+  if (orders.length == 0) {
+    ctx.body = [];
+    return;
+  }
+
+  var contract_addresses = orders.map(order => {
+    return order.contract_address
+  });
+
+
+  const collections = await OpenseaCollections.findAll({
+    where: {
+      contract_address: contract_addresses
+    },
+  });
+  ctx.body =
+    collections.map(collection => {
+      return {
+        slug: collection.slug,
+        name: collection.name,
+        schema: collection.schema,
+        contract: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+        total_supply: collection.total_supply,
+        image: collection.image_url,
+        floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
+        verified: collection.verified,
+        rarity_enabled: collection.rarity_enabled,
+      }
+    })
+});
+
 CollectionsRouter.get('/:slug', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
