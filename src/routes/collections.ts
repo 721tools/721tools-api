@@ -116,10 +116,10 @@ CollectionsRouter.get('/highlighted', async (ctx) => {
       type: 1,
     },
     attributes: [
-      [Sequelize.fn('DISTINCT', Sequelize.col('contract_address')), 'contract_address'],
+      [Sequelize.fn('DISTINCT', Sequelize.col('contract_address')), 'contract_address', 'id'],
     ],
     order: [
-      ["create_time", "DESC"]
+      ["id", "DESC"]
     ],
     limit: limit,
   });
