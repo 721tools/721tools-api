@@ -56,6 +56,21 @@ module.exports = class Orders extends Model {
         allowNull: false,
         defaultValue: 0.0000
       },
+      quantity: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
+      trait_type: {
+        type: DataTypes.STRING(128),
+        allowNull: false,
+        defaultValue: ""
+      },
+      trait_name: {
+        type: DataTypes.STRING(128),
+        allowNull: false,
+        defaultValue: ""
+      },
       order_created_date: {
         type: DataTypes.DATE(6),
         allowNull: false,

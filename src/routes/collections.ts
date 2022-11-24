@@ -5,7 +5,8 @@ import { ethers } from 'ethers';
 import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
-import { parseAddress, parseTokenId } from "../helpers/binary_utils";
+import { OrderType } from '../model/order-type';
+import { parseTokenId } from "../helpers/binary_utils";
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
 
@@ -281,25 +282,29 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
     }
   }
   if (event_types.length == 0) {
-    event_types = ["AUCTION_CREATED", "OFFER_ENTERED", "AUCTION_SUCCESSFUL"];
+    event_types = ["AUCTION_SUCCESSFUL", OrderType[OrderType.AUCTION_CREATED], OrderType[OrderType.OFFER_ENTERED], OrderType[OrderType.COLLECTION_OFFER]];
   }
   let events = [];
-  if (event_types.includes("AUCTION_CREATED") || event_types.includes("OFFER_ENTERED")) {
+  if (event_types.includes(OrderType[OrderType.AUCTION_CREATED])
+    || event_types.includes(OrderType[OrderType.OFFER_ENTERED])
+    || event_types.includes(OrderType[OrderType.COLLECTION_OFFER])) {
     const where = {
       contract_address: collection.contract_address,
     };
     if (occurred_after > 0) {
       where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after) }
     }
-    if (event_types.includes("AUCTION_CREATED")) {
-      if (event_types.includes("OFFER_ENTERED")) {
-        where['type'] = { [Sequelize.Op.in]: [0, 1] }
-      } else {
-        where['type'] = 0;
-      }
-    } else {
-      where['type'] = 1;
+    const types = [];
+    if (event_types.includes(OrderType[OrderType.AUCTION_CREATED])) {
+      types.push(OrderType.AUCTION_CREATED);
     }
+    if (event_types.includes(OrderType[OrderType.OFFER_ENTERED])) {
+      types.push(OrderType.OFFER_ENTERED);
+    }
+    if (event_types.includes(OrderType[OrderType.COLLECTION_OFFER])) {
+      types.push(OrderType.COLLECTION_OFFER);
+    }
+    where['type'] = { [Sequelize.Op.in]: types }
 
     const orders = await Orders.findAll({
       where: where,
@@ -315,7 +320,10 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
         price: item.price,
         from: '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
         event_timestamp: item.order_event_timestamp.getTime(),
-        event_type: item.type == 0 ? "OFFER_ENTERED" : "AUCTION_CREATED"
+        event_type: OrderType[item.type],
+        quantity: item.quantity,
+        trait_type: item.trait_type,
+        trait_name: item.trait_name,
       })));
     }
   }
