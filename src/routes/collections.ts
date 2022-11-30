@@ -617,13 +617,17 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
           count
         });
 
+        while (nextPrice < order.price) {
+          currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
+          nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+        }
+
         stepCount++;
         if (stepCount < 30) {
           currentStartPrice = nextPrice;
           nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
           count = quantity;
         }
-        console.log(currentStartPrice, stepCount);
       }
     }
     depth.push({
@@ -634,17 +638,6 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
     ctx.body = depth;
     return;
   }
-  // let leftBalance = balance;
-  // for (const order of orders) {
-  //   let quantity = order.quantity > 0 ? order.quantity : 1;
-  //   if (leftBalance > order.price * quantity) {
-  //     count += quantity;
-  //     leftBalance -= order.price * quantity;
-  //   } else {
-  //     count += Math.floor(leftBalance / order.price);
-  //     break;
-  //   }
-  // }
   ctx.body = depth;
 });
 
