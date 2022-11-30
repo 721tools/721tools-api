@@ -589,6 +589,14 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
     }
   }
 
+  let maxStepCount = getNumberQueryParam('count', ctx);
+  if (maxStepCount <= 0) {
+    maxStepCount = 10;
+  } else if (maxStepCount > 100) {
+    maxStepCount == 100;
+  }
+
+
   const orders = await Orders.findAll({
     where: {
       contract_address: collection.contract_address,
@@ -602,6 +610,7 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
   if (orders.length > 0) {
     orders.sort((a, b) => a.price - b.price);
     let count = 0;
+    let stepCount = 1;
     let currentStartPrice = Math.floor(orders[0].price / size) * size;
     let nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
     for (const index in orders) {
@@ -615,13 +624,19 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
           count
         });
 
-        while (nextPrice < order.price) {
-          currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
+        if (stepCount < maxStepCount) {
+          stepCount++;
+          while (nextPrice < order.price) {
+            currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
+            nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+          }
+          currentStartPrice = nextPrice;
           nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+          count = quantity;
+        } else {
+          count = orders.length - parseInt(index);
+          break;
         }
-        currentStartPrice = nextPrice;
-        nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
-        count = quantity;
       }
     }
     depth.push({
