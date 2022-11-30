@@ -591,7 +591,7 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
 
   const orders = await Orders.findAll({
     where: {
-      // contract_address: collection.contract_address,
+      contract_address: collection.contract_address,
       order_expiration_date: {
         [Sequelize.Op.gt]: new Date()
       },
@@ -601,7 +601,6 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
   const depth = [];
   if (orders.length > 0) {
     orders.sort((a, b) => a.price - b.price);
-    console.log(orders.length)
     let count = 0;
     let stepCount = 1;
     let currentStartPrice = Math.floor(orders[0].price / size) * size;
