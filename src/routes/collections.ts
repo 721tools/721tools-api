@@ -510,7 +510,7 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
     where: {
       contract_address: collection.contract_address,
       order_expiration_date: {
-        lt: new Date().getTime()
+        [Sequelize.Op.gt]: new Date()
       },
       type: OrderType.AUCTION_CREATED,
     },
@@ -522,11 +522,14 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
   let count = 0;
   let leftBalance = balance;
   for (const order of orders) {
-    if (leftBalance <= 0) {
+    if (leftBalance > order.price * order.quantity) {
+      count += order.quantity;
+      leftBalance -= order.price * order.quantity;
+    } else {
+      count += leftBalance / order.price;
       break;
     }
-    count += order.quantity;
-    leftBalance -= order.price * order.quantity;
+
   }
   ctx.body = { count: count };
 });
