@@ -624,7 +624,7 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
           count
         });
 
-        if (stepCount < maxStepCount) {
+        if (stepCount < maxStepCount - 1) {
           stepCount++;
           while (nextPrice < order.price) {
             currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
@@ -635,6 +635,10 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
           count = quantity;
         } else {
           count = orders.length - parseInt(index);
+          while (nextPrice < order.price) {
+            currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
+            nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+          }
           break;
         }
       }
