@@ -7,7 +7,7 @@ import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
-import { getNumberQueryParam } from "../helpers/param_utils";
+import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
 
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
@@ -467,6 +467,68 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
 
   await setItemInfo(items, collection);
   ctx.body = items;
+});
+
+CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
+  let slug = ctx.params.slug;
+  if (!slug) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.NO_COLLECTION_FOUND]
+    }
+    return;
+  }
+
+  let criteria = {};
+  if (slug.lastIndexOf("0x") === 0 && ethers.utils.isAddress(slug)) {
+    criteria = {
+      contract_address: Buffer.from(slug.slice(2), 'hex')
+    }
+  } else {
+    criteria = {
+      slug: slug
+    }
+  }
+  const collection = await OpenseaCollections.findOne({
+    where: criteria
+  });
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  let balance = getNumberQueryParam('balance', ctx);
+  if (balance <= 0) {
+    ctx.body = { count: 0 };
+    return;
+  }
+
+  const orders = await Orders.findAll({
+    where: {
+      contract_address: collection.contract_address,
+      order_expiration_date: {
+        lt: new Date().getTime()
+      },
+      type: OrderType.AUCTION_CREATED,
+    },
+    order: [
+      ["price", "ASC"]
+    ],
+    limit: 100,
+  });
+  let count = 0;
+  let leftBalance = balance;
+  for (const order of orders) {
+    if (leftBalance <= 0) {
+      break;
+    }
+    count += order.quantity;
+    leftBalance -= order.price * order.quantity;
+  }
+  ctx.body = { count: count };
 });
 
 const setItemInfo = async (items, collection) => {
