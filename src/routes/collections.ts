@@ -602,7 +602,6 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
   if (orders.length > 0) {
     orders.sort((a, b) => a.price - b.price);
     let count = 0;
-    let stepCount = 1;
     let currentStartPrice = Math.floor(orders[0].price / size) * size;
     let nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
     for (const index in orders) {
@@ -620,13 +619,9 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
           currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
           nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
         }
-
-        stepCount++;
-        if (stepCount < 30) {
-          currentStartPrice = nextPrice;
-          nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
-          count = quantity;
-        }
+        currentStartPrice = nextPrice;
+        nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+        count = quantity;
       }
     }
     depth.push({
