@@ -522,14 +522,14 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
   let count = 0;
   let leftBalance = balance;
   for (const order of orders) {
-    if (leftBalance > order.price * order.quantity) {
-      count += order.quantity;
-      leftBalance -= order.price * order.quantity;
+    let quantity = order.quantity > 0 ? order.quantity : 1;
+    if (leftBalance > order.price * quantity) {
+      count += quantity;
+      leftBalance -= order.price * quantity;
     } else {
-      count += leftBalance / order.price;
+      count += Math.floor(leftBalance / order.price);
       break;
     }
-
   }
   ctx.body = { count: count };
 });
