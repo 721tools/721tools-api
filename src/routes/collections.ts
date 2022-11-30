@@ -599,7 +599,7 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
 
   const orders = await Orders.findAll({
     where: {
-      // contract_address: collection.contract_address,
+      contract_address: collection.contract_address,
       order_expiration_date: {
         [Sequelize.Op.gt]: new Date()
       },
@@ -635,6 +635,10 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
           count = quantity;
         } else {
           count = orders.length - parseInt(index);
+          while (nextPrice < order.price) {
+            currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
+            nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+          }
           currentStartPrice = nextPrice;
           break;
         }
