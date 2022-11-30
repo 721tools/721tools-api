@@ -7,6 +7,8 @@ import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
+import { getNumberQueryParam } from "../helpers/param_utils";
+
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
 
@@ -500,16 +502,5 @@ const setItemInfo = async (items, collection) => {
   }
   return items;
 }
-
-const getNumberQueryParam = (param, ctx) => {
-  let paramValue: number = 0;
-  if (param in ctx.request.query) {
-    paramValue = Number(ctx.request.query[param]);
-    if (paramValue < 0) {
-      paramValue = 0;
-    }
-  }
-  return paramValue;
-};
 
 module.exports = CollectionsRouter;

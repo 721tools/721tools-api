@@ -3,7 +3,8 @@ import Sequelize from 'sequelize';
 import { OpenseaCollections, SmartBuys, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { SmartBuyStatus } from '../model/smart-buy-status';
-import { requireLogin, requireWhitelist } from "../helpers/auth_helper"
+import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
+import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
 import _ from 'lodash';
 
 const SmartBuysRouter = new Router({})
@@ -331,29 +332,6 @@ SmartBuysRouter.put('/:id/stop', requireLogin, requireWhitelist, async (ctx) => 
   });
   ctx.body = {}
 });
-
-const getNumberParam = (param, ctx) => {
-  let paramValue: number = 0;
-  if (param in ctx.request.body) {
-    paramValue = Number(ctx.request.body[param]);
-    if (paramValue < 0) {
-      paramValue = 0;
-    }
-  }
-  return paramValue;
-};
-
-const getNumberQueryParam = (param, ctx) => {
-  let paramValue: number = 0;
-  if (param in ctx.request.query) {
-    paramValue = Number(ctx.request.query[param]);
-    if (paramValue < 0) {
-      paramValue = 0;
-    }
-  }
-  return paramValue;
-};
-
 
 SmartBuysRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;

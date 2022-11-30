@@ -12,6 +12,7 @@ import { SignType } from '../model/sign-type';
 import { KmsSigner } from '../helpers/kms/kms-signer';
 import { getERC20Balance, transferERC20, estimateTransferERC20 } from '../helpers/opensea/erc20_utils';
 import { haveToken, transferERC721, estimateTransferERC721 } from '../helpers/opensea/erc721_utils';
+import { getNumberQueryParam } from "../helpers/param_utils";
 
 const WalletsRouter = new Router({});
 const Op = Sequelize.Op;
@@ -205,8 +206,8 @@ WalletsRouter.get('/:address/txs', async (ctx) => {
     return;
   }
 
-  let page = getNumberParam('page', ctx);
-  let limit = getNumberParam('limit', ctx);
+  let page = getNumberQueryParam('page', ctx);
+  let limit = getNumberQueryParam('limit', ctx);
   if (limit <= 0) {
     limit = 10;
   }
@@ -477,17 +478,6 @@ WalletsRouter.post('/withdraw/estimate_gas', requireLogin, requireWhitelist, asy
   }
 
 });
-
-const getNumberParam = (param, ctx) => {
-  let paramValue: number = 0;
-  if (param in ctx.request.query) {
-    paramValue = Number(ctx.request.query[param]);
-    if (paramValue < 0) {
-      paramValue = 0;
-    }
-  }
-  return paramValue;
-};
 
 const getGas = async (provider, gasLimit) => {
   const gasPrice = await provider.getGasPrice();

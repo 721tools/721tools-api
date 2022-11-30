@@ -1,11 +1,12 @@
 import Router from 'koa-router';
 import Sequelize from 'sequelize';
 import { OpenseaCollections, Orders } from '../dal/db';
+import { getNumberQueryParam } from "../helpers/param_utils";
 
 const ListingRouter = new Router({})
 ListingRouter.get('/', async (ctx) => {
-  let page = getNumberParam('page', ctx);
-  let limit = getNumberParam('limit', ctx);
+  let page = getNumberQueryParam('page', ctx);
+  let limit = getNumberQueryParam('limit', ctx);
   if (limit <= 0) {
     limit = 50;
   }
@@ -13,18 +14,18 @@ ListingRouter.get('/', async (ctx) => {
     limit = 100;
   }
 
-  let start_listing_time = getNumberParam('start_listing_time', ctx);
+  let start_listing_time = getNumberQueryParam('start_listing_time', ctx);
   if (start_listing_time <= 0) {
     start_listing_time = Math.floor(Date.now());
   }
 
-  let min_floor = getNumberParam('min_floor', ctx);
-  let max_floor = getNumberParam('max_floor', ctx);
-  let min_price = getNumberParam('min_price', ctx);
-  let max_price = getNumberParam('max_price', ctx);
-  let min_rank = getNumberParam('min_rank', ctx);
-  let max_rank = getNumberParam('max_rank', ctx);
-  let top_rank = getNumberParam('top_rank', ctx);
+  let min_floor = getNumberQueryParam('min_floor', ctx);
+  let max_floor = getNumberQueryParam('max_floor', ctx);
+  let min_price = getNumberQueryParam('min_price', ctx);
+  let max_price = getNumberQueryParam('max_price', ctx);
+  let min_rank = getNumberQueryParam('min_rank', ctx);
+  let max_rank = getNumberQueryParam('max_rank', ctx);
+  let top_rank = getNumberQueryParam('top_rank', ctx);
 
   const collections = ctx.request.query["collections"];
 
@@ -63,15 +64,5 @@ ListingRouter.get('/', async (ctx) => {
   }
 });
 
-const getNumberParam = (param, ctx) => {
-  let paramValue: number = 0;
-  if (param in ctx.request.query) {
-    paramValue = Number(ctx.request.query[param]);
-    if (paramValue < 0) {
-      paramValue = 0;
-    }
-  }
-  return paramValue;
-};
 
 module.exports = ListingRouter;
