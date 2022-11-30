@@ -534,6 +534,120 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
   ctx.body = { count: count };
 });
 
+
+CollectionsRouter.get('/:slug/depth', async (ctx) => {
+  let slug = ctx.params.slug;
+  if (!slug) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.NO_COLLECTION_FOUND]
+    }
+    return;
+  }
+
+  let criteria = {};
+  if (slug.lastIndexOf("0x") === 0 && ethers.utils.isAddress(slug)) {
+    criteria = {
+      contract_address: Buffer.from(slug.slice(2), 'hex')
+    }
+  } else {
+    criteria = {
+      slug: slug
+    }
+  }
+  const collection = await OpenseaCollections.findOne({
+    where: criteria
+  });
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  let size = getNumberQueryParam('size', ctx);
+  if (size <= 0) {
+    if (collection.floor_price >= 1000) {
+      size = 1000;
+    } else if (collection.floor_price >= 100) {
+      size = 100;
+    } else if (collection.floor_price >= 10) {
+      size = 10;
+    } else if (collection.floor_price >= 1) {
+      size = 1;
+    } else if (collection.floor_price >= 0.1) {
+      size = 0.1;
+    } else if (collection.floor_price >= 0.01) {
+      size = 0.01;
+    } else if (collection.floor_price >= 0.001) {
+      size = 0.001;
+    } else if (collection.floor_price >= 0.0001) {
+      size = 0.0001;
+    } else {
+      size = 0.00001;
+    }
+  }
+
+  const orders = await Orders.findAll({
+    where: {
+      // contract_address: collection.contract_address,
+      order_expiration_date: {
+        [Sequelize.Op.gt]: new Date()
+      },
+      type: OrderType.AUCTION_CREATED,
+    },
+  });
+  const depth = [];
+  if (orders.length > 0) {
+    orders.sort((a, b) => a.price - b.price);
+    console.log(orders.length)
+    let count = 0;
+    let stepCount = 1;
+    let currentStartPrice = Math.floor(orders[0].price / size) * size;
+    let nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+    for (const index in orders) {
+      const order = orders[index];
+      let quantity = order.quantity > 0 ? order.quantity : 1;
+      if (order.price < nextPrice) {
+        count += quantity;
+      } else {
+        depth.push({
+          price: parseFloat(currentStartPrice.toFixed(4)),
+          count
+        });
+
+        stepCount++;
+        if (stepCount < 30) {
+          currentStartPrice = nextPrice;
+          nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
+          count = quantity;
+        }
+        console.log(currentStartPrice, stepCount);
+      }
+    }
+    depth.push({
+      price: parseFloat(currentStartPrice.toFixed(4)),
+      count
+    });
+
+    ctx.body = depth;
+    return;
+  }
+  // let leftBalance = balance;
+  // for (const order of orders) {
+  //   let quantity = order.quantity > 0 ? order.quantity : 1;
+  //   if (leftBalance > order.price * quantity) {
+  //     count += quantity;
+  //     leftBalance -= order.price * quantity;
+  //   } else {
+  //     count += Math.floor(leftBalance / order.price);
+  //     break;
+  //   }
+  // }
+  ctx.body = depth;
+});
+
 const setItemInfo = async (items, collection) => {
   if (items && items.length > 0) {
     const selectTokens = [];
