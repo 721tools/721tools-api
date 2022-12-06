@@ -469,7 +469,7 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
   ctx.body = items;
 });
 
-CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
+CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
     ctx.status = 404;
@@ -522,6 +522,7 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
     limit: 100,
   });
 
+  const tokens = [];
   if (balance > 0) {
     let count = 0;
     let leftBalance = balance;
@@ -530,30 +531,52 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
       if (leftBalance > order.price * quantity) {
         count += quantity;
         leftBalance -= order.price * quantity;
+        tokens.push(order);
       } else {
-        count += Math.floor(leftBalance / order.price);
+        const plusCount = Math.floor(leftBalance / order.price);
+        if (plusCount > 0) {
+          count += plusCount
+          tokens.push(order);
+        }
         break;
       }
     }
     result.count = count;
-    ctx.body = result;
-    return;
   } else if (buyCount > 0) {
     let needAmount = 0;
     let leftCount = buyCount;
     for (const order of orders) {
       let quantity = order.quantity > 0 ? order.quantity : 1;
+      if (leftCount <= 0) {
+        break;
+      }
       if (leftCount > quantity) {
         leftCount -= quantity;
         needAmount += order.price * quantity;
+        tokens.push(order);
       } else {
-        needAmount += (quantity - leftCount) * order.price
+        needAmount += (quantity - leftCount) * order.price;
+        tokens.push(order);
         break;
       }
     }
     result.amount = needAmount;
-    ctx.body = result;
   }
+  if (tokens.length > 0) {
+    setItemInfo(tokens, collection);
+    Array.prototype.push.apply(result.tokens, _.map(tokens, (item) => ({
+      token_id: parseInt(item.token_id.toString("hex"), 16),
+      price: item.price,
+      from: item.from,
+      quantity: item.quantity,
+      owner_address: item.owner_address,
+      rank: item.traits_rank,
+      image: item.image_url,
+      name: item.name,
+    })));
+  }
+
+  ctx.body = result;
 });
 
 
