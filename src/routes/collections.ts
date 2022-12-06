@@ -6,7 +6,7 @@ import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
-import { parseTokenId } from "../helpers/binary_utils";
+import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
 
 const clickhouse = require('../dal/clickhouse');
@@ -568,8 +568,8 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
       token_id: parseInt(item.token_id.toString("hex"), 16),
       price: item.price,
       from: item.from,
-      quantity: item.quantity,
-      owner_address: item.owner_address,
+      quantity: item.quantity > 0 ? 1 : item.quantity,
+      owner_address: parseAddress(item.owner_address),
       rank: item.traits_rank,
       image: item.image_url,
       name: item.name,
