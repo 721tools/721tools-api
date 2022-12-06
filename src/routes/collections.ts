@@ -569,7 +569,7 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
       price: item.price,
       from: item.from,
       quantity: item.quantity > 0 ? item.quantity : 1,
-      owner_address: '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
+      owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
       rank: item.traits_rank,
       image: item.image_url,
       name: item.name,
