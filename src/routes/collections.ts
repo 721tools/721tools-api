@@ -6,8 +6,9 @@ import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
-import { parseTokenId, parseAddress } from "../helpers/binary_utils";
-import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
+import { parseTokenId } from "../helpers/binary_utils";
+import { getNumberQueryParam } from "../helpers/param_utils";
+import { setItemInfo } from "../helpers/item_utils";
 
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
@@ -320,7 +321,7 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       Array.prototype.push.apply(events, _.map(orders, (item) => ({
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
-        from: '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
+        from: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
         event_timestamp: item.order_event_timestamp.getTime(),
         event_type: OrderType[item.type],
         quantity: item.quantity,
@@ -563,15 +564,15 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
     result.amount = needAmount;
   }
   if (tokens.length > 0) {
-    setItemInfo(tokens, collection);
+    await setItemInfo(orders, collection);
     Array.prototype.push.apply(result.tokens, _.map(tokens, (item) => ({
       token_id: parseInt(item.token_id.toString("hex"), 16),
       price: item.price,
       from: item.from,
       quantity: item.quantity > 0 ? item.quantity : 1,
       owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
-      rank: item.traits_rank,
-      image: item.image_url,
+      rank: item.rank,
+      image: item.image,
       name: item.name,
       supports_wyvern: item.supports_wyvern,
     })));
@@ -701,40 +702,5 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
   ctx.body = depth;
 });
 
-const setItemInfo = async (items, collection) => {
-  if (items && items.length > 0) {
-    const selectTokens = [];
-    for (const item of items) {
-      selectTokens.push(parseTokenId(item.token_id));
-    }
-    const itemsRes = await OpenseaItems.findAll({
-      where: {
-        contract_address: collection.contract_address,
-        token_id: selectTokens
-      }
-    });
-
-    if (itemsRes && itemsRes.length > 0) {
-      const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
-      for (let index in items) {
-        const nft = items[index];
-        if (itemMap.has(nft.token_id)) {
-          const item = itemMap.get(nft.token_id);
-          nft.rank = item.traits_rank;
-          nft.image = item.image_url;
-          nft.name = item.name;
-          nft.supports_wyvern = item.supports_wyvern;
-        } else {
-          nft.name = collection.name + " #" + nft.token_id;
-          nft.image = collection.image_url;
-          nft.rank = 0;
-          nft.supports_wyvern = true;
-        }
-        items[index] = nft;
-      }
-    }
-  }
-  return items;
-}
 
 module.exports = CollectionsRouter;
