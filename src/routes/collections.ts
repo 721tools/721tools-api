@@ -573,6 +573,7 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
       rank: item.traits_rank,
       image: item.image_url,
       name: item.name,
+      supports_wyvern: item.supports_wyvern,
     })));
   }
 
@@ -722,10 +723,12 @@ const setItemInfo = async (items, collection) => {
           nft.rank = item.traits_rank;
           nft.image = item.image_url;
           nft.name = item.name;
+          nft.supports_wyvern = item.supports_wyvern;
         } else {
           nft.name = collection.name + " #" + nft.token_id;
           nft.image = collection.image_url;
           nft.rank = 0;
+          nft.supports_wyvern = true;
         }
         items[index] = nft;
       }

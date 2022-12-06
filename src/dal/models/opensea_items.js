@@ -75,6 +75,11 @@ module.exports = class OpenseaItems extends Model {
         allowNull: false,
         defaultValue: 0
       },
+      supports_wyvern: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+      },
       create_time: {
         type: DataTypes.DATE(6),
         allowNull: false,
