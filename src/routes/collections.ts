@@ -501,8 +501,10 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
   }
 
   let balance = getNumberQueryParam('balance', ctx);
-  if (balance <= 0) {
-    ctx.body = { count: 0 };
+  let buyCount = getNumberQueryParam('count', ctx);
+  const result = { count: 0, amount: 0, tokens: [] };
+  if (balance <= 0 && buyCount <= 0) {
+    ctx.body = result;
     return;
   }
 
@@ -519,19 +521,39 @@ CollectionsRouter.get('/:slug/canbuy', async (ctx) => {
     ],
     limit: 100,
   });
-  let count = 0;
-  let leftBalance = balance;
-  for (const order of orders) {
-    let quantity = order.quantity > 0 ? order.quantity : 1;
-    if (leftBalance > order.price * quantity) {
-      count += quantity;
-      leftBalance -= order.price * quantity;
-    } else {
-      count += Math.floor(leftBalance / order.price);
-      break;
+
+  if (balance > 0) {
+    let count = 0;
+    let leftBalance = balance;
+    for (const order of orders) {
+      let quantity = order.quantity > 0 ? order.quantity : 1;
+      if (leftBalance > order.price * quantity) {
+        count += quantity;
+        leftBalance -= order.price * quantity;
+      } else {
+        count += Math.floor(leftBalance / order.price);
+        break;
+      }
     }
+    result.count = count;
+    ctx.body = result;
+    return;
+  } else if (buyCount > 0) {
+    let needAmount = 0;
+    let leftCount = buyCount;
+    for (const order of orders) {
+      let quantity = order.quantity > 0 ? order.quantity : 1;
+      if (leftCount > quantity) {
+        leftCount -= quantity;
+        needAmount += order.price * quantity;
+      } else {
+        needAmount += (quantity - leftCount) * order.price
+        break;
+      }
+    }
+    result.amount = needAmount;
+    ctx.body = result;
   }
-  ctx.body = { count: count };
 });
 
 
