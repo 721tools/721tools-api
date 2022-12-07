@@ -86,25 +86,65 @@ CollectionsRouter.get('/', async (ctx) => {
     limit: limit,
     order: order
   });
+  const results = [];
+  for (const collection of rows) {
+    results.push({
+      slug: collection.slug,
+      name: collection.name,
+      schema: collection.schema,
+      contract: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+      total_supply: collection.total_supply,
+      image: collection.image_url,
+      floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
+      verified: collection.verified,
+      rarity_enabled: collection.rarity_enabled,
+      sevendays_volumns: ctx.request.query['include_sevendays_volumns'] ? await getSevenDaysVolumns(collection) : []
+    });
+  }
   ctx.body = {
     page: page,
     limit: limit,
     total: count,
-    collections: rows.map(collection => {
-      return {
-        slug: collection.slug,
-        name: collection.name,
-        schema: collection.schema,
-        contract: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
-        total_supply: collection.total_supply,
-        image: collection.image_url,
-        floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
-        verified: collection.verified,
-        rarity_enabled: collection.rarity_enabled,
-      }
-    })
+    collections: results
   }
 });
+
+const getSevenDaysVolumns = async (collection) => {
+  const clickHouseQuery = `select * from opensea_collections_history where contract_address = '${'0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')}' and create_time > now() - interval 24*8 hour order by id asc`;
+  const historys = await clickhouse.query(clickHouseQuery).toPromise();
+  const lastDay = new Date().setHours(0, 0, 0, 0);
+  const firstDay = lastDay - 6 * 24 * 60 * 60 * 1000;
+
+  const result = {};
+  if (historys.length > 0) {
+    let day = firstDay;
+    let lastVolumn = 0;
+    for (const history of historys) {
+      if (day > lastDay) {
+        break;
+      }
+      let dayMissed = true;
+      while (new Date(history.create_time).getTime() < day) {
+        dayMissed = false;
+        continue;
+      }
+      if (!dayMissed) {
+        result[new Date(day).toISOString().slice(0, 10).replace(/-/g, "")] = lastVolumn == 0 ? 0 : history.total_volume - lastVolumn;
+        lastVolumn = history.total_volume;
+        day += 24 * 60 * 60 * 1000;
+      } else {
+        result[new Date(day).toISOString().slice(0, 10).replace(/-/g, "")] = 0;
+        lastVolumn = history.total_volume;
+        day += 24 * 60 * 60 * 1000;
+      }
+    }
+  } else {
+    for (let day = firstDay; day <= lastDay; day += 24 * 60 * 60 * 1000) {
+      result[new Date(day).toISOString().slice(0, 10).replace(/-/g, "")] = 0;
+    }
+  }
+  return result;
+}
 
 CollectionsRouter.get('/highlighted', async (ctx) => {
   let limit = getNumberQueryParam('limit', ctx);
