@@ -8,7 +8,7 @@ import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
-import { setItemInfo, getItemsByTraits } from "../helpers/item_utils";
+import { setItemInfo, setOrderItemInfo, getItemsByTraits } from "../helpers/item_utils";
 
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
@@ -524,7 +524,7 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
   ctx.body = items;
 });
 
-CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
+CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
     ctx.status = 404;
@@ -555,22 +555,31 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
     return;
   }
 
-  let balance = getNumberQueryParam('balance', ctx);
-  let buyCount = getNumberQueryParam('count', ctx);
+  let balance = getNumberParam('balance', ctx);
+  let buyCount = getNumberParam('count', ctx);
   const result = { count: 0, amount: 0, tokens: [] };
   if (balance <= 0 && buyCount <= 0) {
     ctx.body = result;
     return;
   }
 
-  const orders = await Orders.findAll({
-    where: {
-      contract_address: collection.contract_address,
-      order_expiration_date: {
-        [Sequelize.Op.gt]: new Date()
-      },
-      type: OrderType.AUCTION_CREATED,
+  const where = {
+    contract_address: collection.contract_address,
+    order_expiration_date: {
+      [Sequelize.Op.gt]: new Date()
     },
+    type: OrderType.AUCTION_CREATED,
+  };
+
+  const traits = ctx.request.body['traits'];
+  let items = await getItemsByTraits(collection, traits);
+  if (items) {
+    const tokenIds = _.map(items, (item) => item.token_id);
+    where['token_id'] = tokenIds;
+  }
+
+  const orders = await Orders.findAll({
+    where: where,
     order: [
       ["price", "ASC"]
     ],
@@ -618,7 +627,11 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
     result.amount = needAmount;
   }
   if (tokens.length > 0) {
-    await setItemInfo(orders, collection);
+    if (items) {
+      await setOrderItemInfo(orders, items, collection);
+    } else {
+      await setItemInfo(orders, collection);
+    }
     Array.prototype.push.apply(result.tokens, _.map(tokens, (item) => ({
       token_id: parseInt(item.token_id.toString("hex"), 16),
       price: item.price,
