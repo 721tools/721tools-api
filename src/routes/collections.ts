@@ -7,8 +7,8 @@ import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
-import { getNumberQueryParam } from "../helpers/param_utils";
-import { setItemInfo } from "../helpers/item_utils";
+import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
+import { setItemInfo, getItemsByTraits } from "../helpers/item_utils";
 
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
@@ -274,7 +274,7 @@ CollectionsRouter.get('/:slug', async (ctx) => {
 
 
 
-CollectionsRouter.get('/:slug/events', async (ctx) => {
+CollectionsRouter.post('/:slug/events', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
     ctx.status = 404;
@@ -305,11 +305,11 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
     return;
   }
 
-  let occurred_after = getNumberQueryParam('occurred_after', ctx);
+  let occurred_after = getNumberParam('occurred_after', ctx);
   if (occurred_after <= 0) {
     occurred_after = 0;
   }
-  let limit = getNumberQueryParam('limit', ctx);
+  let limit = getNumberParam('limit', ctx);
   if (limit <= 0) {
     limit = 20;
   }
@@ -327,6 +327,9 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
   if (event_types.length == 0) {
     event_types = ["AUCTION_SUCCESSFUL", OrderType[OrderType.AUCTION_CREATED], OrderType[OrderType.OFFER_ENTERED], OrderType[OrderType.COLLECTION_OFFER]];
   }
+  const traits = ctx.request.body['traits'];
+  let items = await getItemsByTraits(collection, traits);
+
   let events = [];
   if (event_types.includes(OrderType[OrderType.AUCTION_CREATED])
     || event_types.includes(OrderType[OrderType.OFFER_ENTERED])
@@ -348,6 +351,10 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
       types.push(OrderType.COLLECTION_OFFER);
     }
     where['type'] = { [Sequelize.Op.in]: types }
+    if (items) {
+      const tokenIds = _.map(items, (item) => item.token_id);
+      where['token_id'] = tokenIds;
+    }
 
     const orders = await Orders.findAll({
       where: where,
@@ -372,13 +379,18 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
   }
 
   if (event_types.includes("AUCTION_SUCCESSFUL")) {
+    const tradeWhere = {
+      address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+      timestamp: {
+        [Sequelize.Op.gte]: new Date(occurred_after)
+      }
+    }
+    if (items) {
+      const tokenIds = _.map(items, (item) => parseInt(item.token_id.toString("hex"), 16));
+      tradeWhere['tokenId'] = tokenIds;
+    }
     const nftTrades = await NFTTrades.findAll({
-      where: {
-        address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
-        timestamp: {
-          [Sequelize.Op.gte]: new Date(occurred_after)
-        }
-      },
+      where: tradeWhere,
       order: [
         ["height", "DESC"],
         ["logIndex", "DESC"],
@@ -401,12 +413,14 @@ CollectionsRouter.get('/:slug/events', async (ctx) => {
   }
 
   if (events.length > 0) {
-    const items = await OpenseaItems.findAll({
-      where: {
-        contract_address: collection.contract_address,
-        token_id: events.map(item => parseTokenId(item.token_id))
-      },
-    });
+    if (!items) {
+      items = await OpenseaItems.findAll({
+        where: {
+          contract_address: collection.contract_address,
+          token_id: events.map(item => parseTokenId(item.token_id))
+        },
+      });
+    }
 
     if (items.length > 0) {
       const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16), item.dataValues]));

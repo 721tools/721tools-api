@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { OpenseaItems } from '../dal/db';
 import { parseTokenId } from "../helpers/binary_utils";
 
@@ -41,3 +42,50 @@ export const setItemInfo = async (items, collection) => {
     }
     return items;
 };
+
+export const getItemsByTraits = async (collection, traits) => {
+    if (_.isEmpty(traits)) {
+        return null;
+    }
+    const items = await OpenseaItems.findAll({
+        where: {
+            contract_address: collection.contract_address,
+        },
+    });
+    if (items.length == 0) {
+        return items;
+    }
+    const result = [];
+    for (const item of items) {
+        if (_.isEmpty(item.traits)) {
+            continue;
+        }
+        const traitsMap = _.groupBy(item.traits, function (item) {
+            return item.trait_type;
+        });
+
+        let allContains = true;
+        for (const traitType of Object.keys(traits)) {
+            let traitContains = false;
+            if (traitType in traitsMap) {
+                const traitValues = traitsMap[traitType].map(trait => {
+                    return trait.value
+                });
+                for (const traitValue of traits[traitType]) {
+                    if (traitValues.includes(traitValue)) {
+                        traitContains = true;
+                        break;
+                    }
+                }
+            }
+            if (!traitContains) {
+                allContains = false;
+                break;
+            }
+        }
+        if (allContains) {
+            result.push(item);
+        }
+    }
+    return result;
+}
