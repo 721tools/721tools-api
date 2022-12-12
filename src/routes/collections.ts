@@ -116,7 +116,7 @@ const getSevenDaysVolumns = async (collection) => {
   const firstDay = lastDay - 6 * 24 * 60 * 60 * 1000;
 
   const result = {};
-  if (historys.length > 0) {
+  if (historys.length >= 7) {
     let day = firstDay;
     let lastVolumn = 0;
     for (const history of historys) {
