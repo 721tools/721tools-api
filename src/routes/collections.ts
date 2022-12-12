@@ -636,7 +636,7 @@ CollectionsRouter.get('/:slug/buy_estimate', async (ctx) => {
 });
 
 
-CollectionsRouter.get('/:slug/depth', async (ctx) => {
+CollectionsRouter.post('/:slug/depth', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
     ctx.status = 404;
@@ -667,7 +667,7 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
     return;
   }
 
-  let size = getNumberQueryParam('size', ctx);
+  let size = getNumberParam('size', ctx);
   if (size <= 0) {
     if (collection.floor_price >= 1000) {
       size = 1000;
@@ -698,7 +698,9 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
   }
 
 
-  const orders = await Orders.findAll({
+  const traits = ctx.request.body['traits'];
+  let items = await getItemsByTraits(collection, traits);
+  const where = {
     where: {
       contract_address: collection.contract_address,
       order_expiration_date: {
@@ -706,7 +708,13 @@ CollectionsRouter.get('/:slug/depth', async (ctx) => {
       },
       type: OrderType.AUCTION_CREATED,
     },
-  });
+  };
+  if (items) {
+    const tokenIds = _.map(items, (item) => item.token_id);
+    where['token_id'] = tokenIds;
+  }
+
+  const orders = await Orders.findAll(where);
   const depth = [];
   if (orders.length > 0) {
     orders.sort((a, b) => a.price - b.price);
