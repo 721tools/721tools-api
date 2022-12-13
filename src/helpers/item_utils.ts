@@ -64,15 +64,17 @@ export const setOrderItemInfo = async (orders, items, collection) => {
     return orders;
 };
 
-export const getItemsByTraits = async (collection, traits) => {
+export const getItemsByTraits = async (collection, traits, skipFlagged) => {
     if (_.isEmpty(traits)) {
         return null;
     }
-    const items = await OpenseaItems.findAll({
-        where: {
-            contract_address: collection.contract_address,
-        },
-    });
+    const where = {
+        contract_address: collection.contract_address,
+    };
+    if (skipFlagged) {
+        where['supports_wyvern'] = false;
+    }
+    const items = await OpenseaItems.findAll();
     if (items.length == 0) {
         return items;
     }

@@ -328,7 +328,8 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     event_types = ["AUCTION_SUCCESSFUL", OrderType[OrderType.AUCTION_CREATED], OrderType[OrderType.OFFER_ENTERED], OrderType[OrderType.COLLECTION_OFFER]];
   }
   const traits = ctx.request.body['traits'];
-  let items = await getItemsByTraits(collection, traits);
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  let items = await getItemsByTraits(collection, traits, skipFlagged);
 
   let events = [];
   if (event_types.includes(OrderType[OrderType.AUCTION_CREATED])
@@ -572,7 +573,8 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
   };
 
   const traits = ctx.request.body['traits'];
-  let items = await getItemsByTraits(collection, traits);
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  let items = await getItemsByTraits(collection, traits, skipFlagged);
   if (items) {
     const tokenIds = _.map(items, (item) => item.token_id);
     where['token_id'] = tokenIds;
@@ -712,7 +714,8 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
 
 
   const traits = ctx.request.body['traits'];
-  let items = await getItemsByTraits(collection, traits);
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  let items = await getItemsByTraits(collection, traits, skipFlagged);
   const where = {
     where: {
       contract_address: collection.contract_address,
