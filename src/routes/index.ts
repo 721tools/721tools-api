@@ -1,10 +1,8 @@
 const Router = require('koa-router');
 const auth = require('./auth');
-const listing = require('./listing');
 const wallets = require('./wallets');
 const smartBuys = require('./smart-buys');
 const collections = require('./collections');
-const statistics = require('./statistics');
 const orders = require('./orders');
 
 
