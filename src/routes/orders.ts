@@ -114,8 +114,8 @@ OrdersRouter.post('/sweep', async (ctx) => {
       }
 
       const order = ordersMap[openseaToken.token_id][0];
-      const orderAssetContract = order.assets[0].asset_contract.address;
-      const orderAssetsymbol = order.assets[0].asset_contract.symbol;
+      const orderAssetContract = order.taker_asset_bundle.assets[0].asset_contract.address;
+      const orderAssetsymbol = order.taker_asset_bundle.assets[0].asset_contract.symbol;
       if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || orderAssetsymbol !== "ETH") {
         missingTokens.push(openseaToken.token_id);
         continue;
@@ -138,8 +138,7 @@ OrdersRouter.post('/sweep', async (ctx) => {
     return;
   }
 
-
-  ctx.body = ctx.request.body;
+  ctx.body = calldatas;
 });
 
 
