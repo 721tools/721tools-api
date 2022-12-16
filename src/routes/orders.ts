@@ -1,5 +1,6 @@
 import Router from 'koa-router';
 import { gotScraping } from 'got-scraping';
+import { ethers } from "ethers";
 import { OpenseaCollections } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress } from '../helpers/binary_utils';
@@ -54,17 +55,21 @@ OrdersRouter.post('/sweep', async (ctx) => {
     ctx.body = {
       error: HttpError[HttpError.EMPTY_TOKENS]
     }
+    return;
   }
   if (tokens.length > 50) {
     ctx.status = 400;
     ctx.body = {
       error: HttpError[HttpError.TOO_MANY_TOKENS]
     }
+    return;
   }
 
   const openseaTokens = tokens.filter(token => token.platform == 0);
+  const missingTokens = [];
+  const calldatas = [];
   if (openseaTokens.length > 0) {
-    let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=0x${Buffer.from(collection.contract_address, 'binary').toString('hex')}&limit=1&order_by=eth_price&order_direction=asc&format=json`;
+    let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=0x${Buffer.from(collection.contract_address, 'binary').toString('hex')}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
     for (const openseaToken of openseaTokens) {
       url = url + "&token_ids=" + openseaToken.token_id;
     }
@@ -99,7 +104,40 @@ OrdersRouter.post('/sweep', async (ctx) => {
         allOrders = allOrders.concat(orders);
       }
     }
+    const ordersMap = _.groupBy(allOrders, function (item) {
+      return item.maker_asset_bundle.assets[0].token_id;
+    });
+    for (const openseaToken of openseaTokens) {
+      if (!(openseaToken.token_id in ordersMap)) {
+        missingTokens.push(openseaToken.token_id)
+        continue;
+      }
+
+      const order = ordersMap[openseaToken.token_id][0];
+      const orderAssetContract = order.assets[0].asset_contract.address;
+      const orderAssetsymbol = order.assets[0].asset_contract.symbol;
+      if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || orderAssetsymbol !== "ETH") {
+        missingTokens.push(openseaToken.token_id);
+        continue;
+      }
+      const current_price = parseFloat(ethers.utils.formatUnits(order.current_price, 'ether'));
+      if (current_price > openseaToken.price) {
+        missingTokens.push(openseaToken.token_id);
+        continue;
+      }
+
+      calldatas.push(order);
+    }
   }
+  if (missingTokens.length > 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.ORDER_EXPIRED],
+      order_ids: missingTokens
+    }
+    return;
+  }
+
 
   ctx.body = ctx.request.body;
 });
