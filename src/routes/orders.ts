@@ -64,35 +64,40 @@ OrdersRouter.post('/sweep', async (ctx) => {
 
   const openseaTokens = tokens.filter(token => token.platform == 0);
   if (openseaTokens.length > 0) {
-    let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=0x${Buffer.from(collection.contract_address, 'binary').toString('hex')}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
+    let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=0x${Buffer.from(collection.contract_address, 'binary').toString('hex')}&limit=1&order_by=eth_price&order_direction=asc&format=json`;
     for (const openseaToken of openseaTokens) {
       url = url + "&token_ids=" + openseaToken.token_id;
     }
     const key = randomKey();
-    console.log(key);
-    const response = await gotScraping({
-      url: url,
-      headers: {
-        'content-type': 'application/json',
-        'X-API-KEY': key
-      },
-    });
-    if (response.statusCode != 200) {
-      console.log(`Get opensea listings error, using key:${key}, url:${url}`, response.body);
-      ctx.status = 500;
-      ctx.body = {
-        error: HttpError[HttpError.OEPNSEA_ERROR]
+    let hasMore = true;
+    let cursor = null;
+    let allOrders = [];
+    while (hasMore) {
+      const requestUrl = cursor ? url + `&cursor=${cursor}` : url;
+      const response = await gotScraping({
+        url: requestUrl,
+        headers: {
+          'content-type': 'application/json',
+          'X-API-KEY': key
+        },
+      });
+      if (response.statusCode != 200) {
+        console.log(`Get opensea listings error, using key:${key}, url:${requestUrl}`, response.body);
+        ctx.status = 500;
+        ctx.body = {
+          error: HttpError[HttpError.OEPNSEA_ERROR]
+        }
+        return;
       }
-      return;
-    }
-    const orders = JSON.parse(response.body).orders;
-    if (!orders || orders.length < 1) {
-      console.log(`Get no opensea listings ${url}`, response.body);
-      ctx.status = 500;
-      ctx.body = {
-        error: HttpError[HttpError.OEPNSEA_ERROR]
+      const responseBody = JSON.parse(response.body);
+      const orders = responseBody.orders;
+      cursor = responseBody.next;
+      if (!cursor) {
+        hasMore = false;
       }
-      return;
+      if (orders.length > 0) {
+        allOrders = allOrders.concat(orders);
+      }
     }
   }
 
