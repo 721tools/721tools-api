@@ -68,6 +68,15 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            const pendingCount = await OrderBuyLogs.count({
+                order_id: limitOrder.id,
+                status: BuyStatus[BuyStatus.RUNNING]
+            });
+
+            if (pendingCount + limitOrder.purchased >= limitOrder.amount) {
+                continue;
+            }
+
             const user = await User.findOne({
                 where: {
                     id: limitOrder.user_id
