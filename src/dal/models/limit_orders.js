@@ -44,6 +44,11 @@ module.exports = class LimitOrders extends Model {
         type: DataTypes.JSON,
         allowNull: true
       },
+      skip_flagged: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
       status: {
         type: DataTypes.STRING(16),
         allowNull: false,
@@ -60,11 +65,6 @@ module.exports = class LimitOrders extends Model {
         defaultValue: ""
       },
       expiration_time: {
-        type: DataTypes.DATE(6),
-        allowNull: false,
-        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
-      },
-      last_scan_time: {
         type: DataTypes.DATE(6),
         allowNull: false,
         defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')

@@ -3,6 +3,6 @@ export enum LimitOrderStatus {
     RUNNING,
     WETH_NOT_ENOUGH,
     WETH_ALLOWANCE_NOT_ENOUGH,
-    PAUSED,
     FINISHED,
+    EXPIRED,
 }

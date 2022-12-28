@@ -222,6 +222,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
 
 
   const expirationTime = new Date(expiration);
+  const skipFlagged = ctx.request.body['skip_flagged'];
 
   await LimitOrders.create({
     user_id: user.id,
@@ -230,6 +231,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     amount: amount,
     price: price,
     expiration_time: expirationTime,
+    skip_flagged: skipFlagged,
     status: LimitOrderStatus[LimitOrderStatus.INIT],
     traits: ctx.request.body['traits'],
   });
