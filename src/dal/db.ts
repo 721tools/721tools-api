@@ -44,4 +44,6 @@ export const {
   SmartBuyLogs,
   Whitelist,
   NFTTrades,
+  LimitOrders,
+  OrderBuyLogs,
 } = initModels(sequelize, assetsSequelize)

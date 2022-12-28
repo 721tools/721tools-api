@@ -1,12 +1,16 @@
 import Router from 'koa-router';
+import _ from 'lodash';
 import { gotScraping } from 'got-scraping';
 import { ethers } from "ethers";
-import { OpenseaCollections } from '../dal/db';
+import { OpenseaCollections, LimitOrders } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress } from '../helpers/binary_utils';
 import { randomKey } from '../helpers/opensea/key_utils';
-import { requireLogin } from "../helpers/auth_helper";
-import _ from 'lodash';
+import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
+import { getNumberParam } from "../helpers/param_utils";
+import { LimitOrderStatus } from '../model/limit-order-status';
+
+
 
 const OrdersRouter = new Router({})
 
@@ -140,6 +144,98 @@ OrdersRouter.post('/sweep', async (ctx) => {
 
   ctx.body = calldatas;
 });
+
+
+OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+
+  if (!('slug' in ctx.request.body)) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+  const slug = ctx.request.body['slug'];
+  if (!slug) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  const collection = await OpenseaCollections.findOne({
+    where: {
+      slug: slug
+    }
+  });
+
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+
+  let amount = getNumberParam('amount', ctx);
+  if (amount <= 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_AMOUNT]
+    }
+    return;
+  }
+
+  let price = getNumberParam('price', ctx);
+  if (price <= 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_PRICE]
+    }
+    return;
+  }
+
+
+  // @todo judge weth balance
+  // @todo judge weth allowance
+
+  let expiration = getNumberParam('expiration', ctx);
+  if (expiration <= 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
+    }
+    return;
+  }
+  // after 1 hour
+  if (expiration < new Date().getTime() + 60 * 60 * 1000) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
+    }
+    ctx.status = 200;
+    ctx.body = {}
+  }
+
+
+  const expirationTime = new Date(expiration);
+
+  await LimitOrders.create({
+    user_id: user.id,
+    slug: slug,
+    contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+    amount: amount,
+    price: price,
+    expiration_time: expirationTime,
+    status: LimitOrderStatus[LimitOrderStatus.INIT],
+    traits: ctx.request.body['traits'],
+  });
+  ctx.body = {}
+});
+
 
 
 module.exports = OrdersRouter;

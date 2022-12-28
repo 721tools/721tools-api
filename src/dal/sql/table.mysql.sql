@@ -71,3 +71,39 @@ CREATE TABLE `whitelist` (
   PRIMARY KEY (`id`),
   UNIQUE KEY (`address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+DROP TABLE IF EXISTS `limit_orders`;
+CREATE TABLE `limit_orders` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL DEFAULT 0,
+  `slug` varchar(128) NOT NULL DEFAULT '', 
+  `contract_address` varchar(64) NOT NULL DEFAULT '',
+  `amount` int NOT NULL DEFAULT 0,
+  `purchased` int NOT NULL DEFAULT 0,
+  `price` decimal(12, 4) NOT NULL DEFAULT 0,
+  `traits` JSON,
+  `status` varchar(16) NOT NULL DEFAULT '',
+  `error_code` varchar(32) NOT NULL DEFAULT '',
+  `error_details` varchar(256) NOT NULL DEFAULT '',
+  `expiration_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `last_scan_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `update_time` timestamp(6) NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  INDEX (`contract_address`, `status`, `user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `order_buy_logs`;
+CREATE TABLE `order_buy_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL DEFAULT 0,
+  `contract_address` varchar(64) NOT NULL DEFAULT '',
+  `order_id` int NOT NULL DEFAULT 0,
+  `token_id` varchar(256) NOT NULL DEFAULT '',
+  `tx` char(66) NOT NULL DEFAULT '',
+  `success` tinyint NOT NULL DEFAULT 0,
+  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  INDEX (`user_id`, `contract_address`, `order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
