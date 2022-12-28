@@ -104,6 +104,22 @@ async function main(): Promise<void> {
                 continue;
             }
 
+            const where = limitOrder.skip_flagged ? {
+                contract_address: collection.contract_address,
+                supports_wyvern: true,
+                token_id: parseTokenId(tokenId)
+            } : {
+                contract_address: collection.contract_address,
+                token_id: parseTokenId(tokenId),
+            };
+
+            const item = await OpenseaItems.findOne({
+                where: where
+            });
+            if (!item) {
+                continue;
+            }
+
             // collection buy 
             if (_.isEmpty(limitOrder.traits)) {
                 await buy(user, limitOrder, contractAddress, tokenId, price);
@@ -111,53 +127,38 @@ async function main(): Promise<void> {
             }
             // buy by traits
             if (!_.isEmpty(limitOrder.traits)) {
-                const where = limitOrder.skip_flagged ? {
-                    contract_address: collection.contract_address,
-                    supports_wyvern: true,
-                    token_id: parseTokenId(tokenId)
-                } : {
-                    contract_address: collection.contract_address,
-                    token_id: parseTokenId(tokenId),
-                };
+                if (!_.isEmpty(item.traits)) {
+                    const traitsMap = _.groupBy(item.traits, function (item) {
+                        return item.trait_type;
+                    });
 
-                const item = await OpenseaItems.findOne({
-                    where: where
-                });
-
-                if (item) {
-                    if (!_.isEmpty(item.traits)) {
-                        const traitsMap = _.groupBy(item.traits, function (item) {
-                            return item.trait_type;
-                        });
-
-                        let allContains = true;
-                        for (const traitType of Object.keys(limitOrder.traits)) {
-                            let traitContains = false;
-                            if (traitType in traitsMap) {
-                                const traitValues = traitsMap[traitType].map(trait => {
-                                    return trait.value
-                                });
-                                for (const traitValue of limitOrder.traits[traitType]) {
-                                    if (traitValues.includes(traitValue)) {
-                                        traitContains = true;
-                                        break;
-                                    }
+                    let allContains = true;
+                    for (const traitType of Object.keys(limitOrder.traits)) {
+                        let traitContains = false;
+                        if (traitType in traitsMap) {
+                            const traitValues = traitsMap[traitType].map(trait => {
+                                return trait.value
+                            });
+                            for (const traitValue of limitOrder.traits[traitType]) {
+                                if (traitValues.includes(traitValue)) {
+                                    traitContains = true;
+                                    break;
                                 }
                             }
-                            if (!traitContains) {
-                                allContains = false;
-                                break;
-                            }
                         }
+                        if (!traitContains) {
+                            allContains = false;
+                            break;
+                        }
+                    }
 
-                        if (allContains) {
-                            await buy(user, limitOrder, contractAddress, tokenId, price);
-                            continue;
-                        }
-                    } else {
+                    if (allContains) {
                         await buy(user, limitOrder, contractAddress, tokenId, price);
                         continue;
                     }
+                } else {
+                    await buy(user, limitOrder, contractAddress, tokenId, price);
+                    continue;
                 }
             }
 
