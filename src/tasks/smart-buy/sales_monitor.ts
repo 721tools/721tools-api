@@ -1,9 +1,9 @@
 import Sequelize from 'sequelize';
 import _ from 'underscore';
 
-import { SmartBuys, User, OpenseaCollections, OpenseaItems, NFTTrades } from '../dal/db';
-import { SmartBuyStatus } from '../model/smart-buy-status';
-import { parseTokenId, parseAddress } from "../helpers/binary_utils";
+import { SmartBuys, User, OpenseaCollections, OpenseaItems, NFTTrades } from '../../dal/db';
+import { SmartBuyStatus } from '../../model/smart-buy-status';
+import { parseTokenId, parseAddress } from "../../helpers/binary_utils";
 
 async function main(): Promise<void> {
     while (true) {
