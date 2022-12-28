@@ -1,5 +1,6 @@
 import Router from 'koa-router';
 import _ from 'lodash';
+import Sequelize from 'sequelize';
 import { gotScraping } from 'got-scraping';
 import { ethers } from "ethers";
 import { OpenseaCollections, LimitOrders } from '../dal/db';
@@ -7,15 +8,14 @@ import { HttpError } from '../model/http-error';
 import { parseAddress } from '../helpers/binary_utils';
 import { randomKey } from '../helpers/opensea/key_utils';
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
-import { getNumberParam } from "../helpers/param_utils";
+import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 
 
 
 const OrdersRouter = new Router({})
 
-// OrdersRouter.post('/sweep', requireLogin, async (ctx) => {
-OrdersRouter.post('/sweep', async (ctx) => {
+OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   if (!('contract_address' in ctx.request.body)) {
     ctx.status = 400;
     ctx.body = {
@@ -236,6 +236,55 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     traits: ctx.request.body['traits'],
   });
   ctx.body = {}
+});
+
+
+OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+
+  let page = getNumberQueryParam('page', ctx);
+  if (page <= 0) {
+    page = 1;
+  }
+
+  let limit = getNumberQueryParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 10;
+  }
+  if (limit > 20) {
+    limit = 20;
+  }
+
+  const { rows, count } = await LimitOrders.findAndCountAll({
+    where: {
+      user_id: user.id
+    },
+    offset: (page.valueOf() - 1) * limit.valueOf(),
+    limit: limit,
+    order: [Sequelize.literal(`Field(status, 'INIT', 'RUNNING', 'WETH_NOT_ENOUGH', 'WETH_ALLOWANCE_NOT_ENOUGH', 'EXPIRED', 'FINISHED')`), ['id', 'DESC']]
+  });
+  ctx.body = {
+    page: page,
+    limit: limit,
+    total: count,
+    data: rows.map(order => {
+      return {
+        id: order.id,
+        slug: order.slug,
+        traits: order.traits,
+        skip_flagged: order.skip_flagged,
+        price: order.price,
+        amount: order.amount,
+        purchased: order.purchased,
+        status: order.status,
+        error_code: order.error_code,
+        error_details: order.error_details,
+        expiration_time: order.expiration_time.getTime(),
+        create_time: order.create_time.getTime(),
+        update_time: order.update_time.getTime()
+      }
+    })
+  }
 });
 
 
