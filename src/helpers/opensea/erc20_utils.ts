@@ -18,6 +18,11 @@ export const getWethAllowance = async (provider, address) => {
     return await erc20Contract.allowance(address, OpenSeaConduitAddress);
 };
 
+export const getContractWethAllowance = async (provider, contracrAddress, address) => {
+    const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, provider);
+    return await erc20Contract.allowance(address, contracrAddress);
+};
+
 export const getWethBalance = async (provider, address) => {
     const erc20Contract = new ethers.Contract(getWethAddress(), genericErc20Abi, provider);
     return await erc20Contract.balanceOf(address);

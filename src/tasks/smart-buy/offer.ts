@@ -3,17 +3,17 @@ import { ethers, BigNumber } from "ethers";
 import _ from 'underscore';
 
 
-import { SmartBuys, SmartBuyLogs, User, OpenseaCollections, OpenseaItems } from '../dal/db';
-import { SmartBuyStatus } from '../model/smart-buy-status';
-import { SmartBuyType } from '../model/smart-buy-type';
-import { HttpError } from '../model/http-error';
-import { UserType } from '../model/user-type';
-import { preCreateCollectionOffer, postCreateCollectionOffer, queryCollectionOfferMultiModalBase } from '../helpers/opensea/collection_offer';
-import { preCreateOffer } from '../helpers/opensea/bid';
-import { parseTokenId, parseAddress } from "../helpers/binary_utils";
+import { SmartBuys, SmartBuyLogs, User, OpenseaCollections, OpenseaItems } from '../../dal/db';
+import { SmartBuyStatus } from '../../model/smart-buy-status';
+import { SmartBuyType } from '../../model/smart-buy-type';
+import { HttpError } from '../../model/http-error';
+import { UserType } from '../../model/user-type';
+import { preCreateCollectionOffer, postCreateCollectionOffer, queryCollectionOfferMultiModalBase } from '../../helpers/opensea/collection_offer';
+import { preCreateOffer } from '../../helpers/opensea/bid';
+import { parseTokenId, parseAddress } from "../../helpers/binary_utils";
 
-import { KmsSigner } from '../helpers/kms/kms-signer';
-import { getWethAllowance, getWethBalance, approveWeth } from '../helpers/opensea/erc20_utils';
+import { KmsSigner } from '../../helpers/kms/kms-signer';
+import { getWethAllowance, getWethBalance, approveWeth } from '../../helpers/opensea/erc20_utils';
 
 async function main(): Promise<void> {
     while (true) {

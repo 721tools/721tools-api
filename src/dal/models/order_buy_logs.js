@@ -35,10 +35,10 @@ module.exports = class OrderBuyLogs extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      success: {
-        type: DataTypes.BOOLEAN,
+      status: {
+        type: DataTypes.STRING(16),
         allowNull: false,
-        defaultValue: false
+        defaultValue: ""
       },
       create_time: {
         type: DataTypes.DATE(6),

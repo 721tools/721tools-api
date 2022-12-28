@@ -102,8 +102,8 @@ CREATE TABLE `order_buy_logs` (
   `order_id` int NOT NULL DEFAULT 0,
   `token_id` varchar(256) NOT NULL DEFAULT '',
   `tx` char(66) NOT NULL DEFAULT '',
-  `success` tinyint NOT NULL DEFAULT 0,
+  `status` varchar(16) NOT NULL DEFAULT '',
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
-  INDEX (`user_id`, `contract_address`, `order_id`)
+  INDEX (`user_id`, `contract_address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
