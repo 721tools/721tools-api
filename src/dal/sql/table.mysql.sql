@@ -85,7 +85,6 @@ CREATE TABLE `limit_orders` (
   `traits` JSON,
   `skip_flagged` tinyint NOT NULL DEFAULT 0,
   `status` varchar(16) NOT NULL DEFAULT '',
-  `error_code` varchar(32) NOT NULL DEFAULT '',
   `error_details` varchar(256) NOT NULL DEFAULT '',
   `expiration_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

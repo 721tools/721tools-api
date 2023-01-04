@@ -54,11 +54,6 @@ module.exports = class LimitOrders extends Model {
         allowNull: false,
         defaultValue: ""
       },
-      error_code: {
-        type: DataTypes.STRING(32),
-        allowNull: false,
-        defaultValue: ""
-      },
       error_details: {
         type: DataTypes.STRING(256),
         allowNull: false,

@@ -277,7 +277,6 @@ OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
         amount: order.amount,
         purchased: order.purchased,
         status: order.status,
-        error_code: order.error_code,
         error_details: order.error_details,
         expiration_time: order.expiration_time.getTime(),
         create_time: order.create_time.getTime(),
