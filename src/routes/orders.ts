@@ -18,8 +18,7 @@ const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.jso
 
 const OrdersRouter = new Router({})
 
-// OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
-OrdersRouter.post('/sweep', async (ctx) => {
+OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   if (!('contract_address' in ctx.request.body)) {
     ctx.status = 400;
     ctx.body = {
@@ -77,7 +76,7 @@ OrdersRouter.post('/sweep', async (ctx) => {
   const missingTokens = [];
   const calldatas = [];
   if (openseaTokens.length > 0) {
-    let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=0x${Buffer.from(collection.contract_address, 'binary').toString('hex')}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
+    let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contract_address}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
     for (const openseaToken of openseaTokens) {
       url = url + "&token_ids=" + openseaToken.token_id;
     }
