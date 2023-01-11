@@ -1,6 +1,8 @@
 import Sequelize from 'sequelize';
 import { ethers, BigNumber } from "ethers";
 import _ from 'underscore';
+import fs from "fs";
+import path from "path";
 import { gotScraping } from 'got-scraping';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
@@ -11,6 +13,7 @@ import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 import { randomKey } from '../helpers/opensea/key_utils';
+const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
 import { redis } from '../dal/mq';
 
@@ -230,9 +233,15 @@ const buy = async (user, limitOrder, contractAddress, tokenId, price) => {
         ];
 
 
-        const iface = new ethers.utils.Interface(abi)
-        const calldata = iface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
+        const openseaIface = new ethers.utils.Interface(abi)
+        const calldata = openseaIface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
+        const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
+        let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
+        const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
+        console.log("calldata", data);
         const tx = "";
+
+        // @todo call by other wallet with apporved weth
         // const tx = await signer.sendTransaction({
         //     to: order.protocol_address,
         // });
