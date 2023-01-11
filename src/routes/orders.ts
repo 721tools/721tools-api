@@ -1,8 +1,10 @@
 import Router from 'koa-router';
 import _ from 'lodash';
+import fs from "fs";
+import path from "path";
 import Sequelize from 'sequelize';
 import { gotScraping } from 'got-scraping';
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { OpenseaCollections, LimitOrders } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress } from '../helpers/binary_utils';
@@ -10,12 +12,14 @@ import { randomKey } from '../helpers/opensea/key_utils';
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
+const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
 
 
 const OrdersRouter = new Router({})
 
-OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
+// OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
+OrdersRouter.post('/sweep', async (ctx) => {
   if (!('contract_address' in ctx.request.body)) {
     ctx.status = 400;
     ctx.body = {
@@ -142,7 +146,45 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
-  ctx.body = calldatas;
+  const abi = [
+    'function fulfillBasicOrder(tuple(' +
+    '        address considerationToken,' +
+    '        uint256 considerationIdentifier,' +
+    '        uint256 considerationAmount,' +
+    '        address offerer,' +
+    '        address zone,' +
+    '        address offerToken,' +
+    '        uint256 offerIdentifier,' +
+    '        uint256 offerAmount,' +
+    '        uint8 basicOrderType,' +
+    '        uint256 startTime,' +
+    '        uint256 endTime,' +
+    '        bytes32 zoneHash,' +
+    '        uint256 salt,' +
+    '        bytes32 offererConduitKey,' +
+    '        bytes32 fulfillerConduitKey,' +
+    '        uint256 totalOriginalAdditionalRecipients,' +
+    '        (uint256 amount, address recipient)[] additionalRecipients,' +
+    '        bytes signature ) parameters) external payable returns (bool fulfilled)'
+  ];
+  const openseaIface = new ethers.utils.Interface(abi)
+
+
+  let value = BigNumber.from(0);
+  const tradeDetails = [];
+  const openseaOrders = calldatas.filter(calldata => calldata.protocol_address == process.env.SEARPORT_CONTRACTR_ADDRESS);
+  if (openseaOrders.length > 0) {
+    for (const order of openseaOrders) {
+      const basicOrderParameters = getBasicOrderParametersFromOrder(order);
+      const calldata = openseaIface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
+      tradeDetails.push({ marketId: 0, value: order.current_price, tradeData: calldata });
+      value = value.add(BigNumber.from(order.current_price));
+    }
+  }
+
+  let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
+  const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [tradeDetails]);
+  ctx.body = { value: value.toString(), calldata: data };
 });
 
 
@@ -286,6 +328,52 @@ OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
   }
 });
 
+const getBasicOrderParametersFromOrder = (order) => {
+  const basicOrderParameters = {
+    considerationToken: '0x0000000000000000000000000000000000000000',
+    considerationIdentifier: 0,
+    considerationAmount: undefined,
+    offerer: undefined,
+    zone: undefined,
+    offerToken: undefined,
+    offerIdentifier: undefined,
+    offerAmount: 1,
+    basicOrderType: 2,
+    startTime: undefined,
+    endTime: undefined,
+    zoneHash: undefined,
+    salt: undefined,
+    offererConduitKey: undefined,
+    fulfillerConduitKey: undefined,
+    totalOriginalAdditionalRecipients: undefined,
+    additionalRecipients: [],
+    signature: undefined
+  }
+  basicOrderParameters.offerer = ethers.utils.getAddress(order.maker.address);
+  basicOrderParameters.zone = order.protocol_data.parameters.zone;
+  basicOrderParameters.offerToken = order.protocol_data.parameters.offer[0].token;
+  basicOrderParameters.offerIdentifier = order.protocol_data.parameters.offer[0].identifierOrCriteria;
+  basicOrderParameters.startTime = order.listing_time;
+  basicOrderParameters.endTime = order.expiration_time;
+  basicOrderParameters.basicOrderType = order.protocol_data.parameters.orderType;
+  basicOrderParameters.zoneHash = order.protocol_data.parameters.zoneHash;
+  basicOrderParameters.salt = order.protocol_data.parameters.salt;
+  basicOrderParameters.offererConduitKey = order.protocol_data.parameters.conduitKey;
+  basicOrderParameters.fulfillerConduitKey = order.protocol_data.parameters.conduitKey;
+  basicOrderParameters.totalOriginalAdditionalRecipients = order.protocol_data.parameters.totalOriginalConsiderationItems - 1
+  basicOrderParameters.signature = order.protocol_data.signature;
+  for (const consider of order.protocol_data.parameters.consideration) {
+    if (consider.recipient === basicOrderParameters.offerer) {
+      basicOrderParameters.considerationAmount = consider.startAmount;
+      continue;
+    }
 
+    basicOrderParameters.additionalRecipients.push({
+      amount: consider.startAmount,
+      recipient: consider.recipient
+    });
+  }
+  return basicOrderParameters;
+}
 
 module.exports = OrdersRouter;
