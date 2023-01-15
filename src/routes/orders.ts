@@ -13,7 +13,7 @@ import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
-
+const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 
 
 const OrdersRouter = new Router({})
@@ -80,6 +80,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     for (const openseaToken of openseaTokens) {
       url = url + "&token_ids=" + openseaToken.token_id;
     }
+    console.log(url);
     const key = randomKey();
     let hasMore = true;
     let cursor = null;
@@ -90,7 +91,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
         url: requestUrl,
         headers: {
           'content-type': 'application/json',
-          'X-API-KEY': key
+          // 'X-API-KEY': key
         },
       });
       if (response.statusCode != 200) {
@@ -146,7 +147,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   const abi = [
-    'function fulfillBasicOrder(tuple(' +
+    'function buyAssetsForEth([tuple(' +
     '        address considerationToken,' +
     '        uint256 considerationIdentifier,' +
     '        uint256 considerationAmount,' +
@@ -164,9 +165,10 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     '        bytes32 fulfillerConduitKey,' +
     '        uint256 totalOriginalAdditionalRecipients,' +
     '        (uint256 amount, address recipient)[] additionalRecipients,' +
-    '        bytes signature ) parameters) external payable returns (bool fulfilled)'
+    '        bytes signature) parameters)] basicOrderParameters' +
+    'external payable returns (bool fulfilled)'
   ];
-  const openseaIface = new ethers.utils.Interface(abi)
+  const openseaIface = new ethers.utils.Interface(seaportProxyAbi)
 
 
   let value = BigNumber.from(0);
@@ -175,8 +177,8 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   if (openseaOrders.length > 0) {
     for (const order of openseaOrders) {
       const basicOrderParameters = getBasicOrderParametersFromOrder(order);
-      const calldata = openseaIface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
-      tradeDetails.push({ marketId: 0, value: order.current_price, tradeData: calldata });
+      const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
+      tradeDetails.push({ marketId: 1, value: order.current_price, tradeData: calldata });
       value = value.add(BigNumber.from(order.current_price));
     }
   }
