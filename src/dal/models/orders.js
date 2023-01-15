@@ -71,6 +71,10 @@ module.exports = class Orders extends Model {
         allowNull: false,
         defaultValue: ""
       },
+      calldata: {
+        type: DataTypes.STRING.BINARY,
+        allowNull: true,
+      },
       order_created_date: {
         type: DataTypes.DATE(6),
         allowNull: false,

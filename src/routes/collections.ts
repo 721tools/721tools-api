@@ -357,7 +357,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
       where['token_id'] = tokenIds;
     }
 
-    const orders = await Orders.findAll({
+    let orders = await Orders.findAll({
       where: where,
       order: [
         ["id", "DESC"]
@@ -366,6 +366,8 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     });
 
     if (orders.length > 0) {
+      orders = orders.filter(order => order.type !== OrderType.AUCTION_CREATED || (order.calldata && order.calldata != null && order.calldata !== ''));
+
       Array.prototype.push.apply(events, _.map(orders, (item) => ({
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
