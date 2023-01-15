@@ -6,7 +6,6 @@ export const getOrders = async (openseaTokens, contractAddress) => {
     for (const openseaToken of openseaTokens) {
         url = url + "&token_ids=" + openseaToken.token_id;
     }
-    console.log(url);
     const key = randomKey();
     let hasMore = true;
     let cursor = null;

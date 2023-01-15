@@ -19,7 +19,8 @@ const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportPro
 
 const OrdersRouter = new Router({})
 
-OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
+// OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
+OrdersRouter.post('/sweep', async (ctx) => {
   if (!('contract_address' in ctx.request.body)) {
     ctx.status = 400;
     ctx.body = {
@@ -36,26 +37,26 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
-  const collection = await OpenseaCollections.findOne({
-    where: {
-      contract_address: parseAddress(contract_address)
-    }
-  });
+  // const collection = await OpenseaCollections.findOne({
+  //   where: {
+  //     contract_address: parseAddress(contract_address)
+  //   }
+  // });
 
-  if (!collection) {
-    ctx.status = 400;
-    ctx.body = {
-      error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
-    }
-    return;
-  }
-  if (collection.status == 1) {
-    ctx.status = 400;
-    ctx.body = {
-      error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
-    }
-    return;
-  }
+  // if (!collection) {
+  //   ctx.status = 400;
+  //   ctx.body = {
+  //     error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
+  //   }
+  //   return;
+  // }
+  // if (collection.status == 1) {
+  //   ctx.status = 400;
+  //   ctx.body = {
+  //     error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
+  //   }
+  //   return;
+  // }
 
   const tokens = ctx.request.body['tokens'];
   if (!tokens || tokens.length == 0) {
@@ -75,7 +76,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
 
   const openseaTokens = tokens.filter(token => token.platform == 0);
   const missingTokens = [];
-  const openseaLeftTokens = openseaTokens.slice();;
+  const openseaLeftTokens = openseaTokens.map(token => token.token_id);
   const orders = {
     seaport: {
       db: [],
@@ -84,20 +85,26 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   };
 
   if (openseaTokens.length > 0) {
+    let openseaTokenFilters = [];
+    for (const token of tokens) {
+      openseaTokenFilters.push({
+        token_id: parseTokenId(token.token_id),
+        price: { [Sequelize.Op.lte]: token.price }
+      });
+    }
     const ordersInDb = await Orders.findAll({
       where: {
         contract_address: parseAddress(contract_address),
         type: OrderType.AUCTION_CREATED,
-        token_id: tokens.map(tokenId => parseTokenId(tokenId)),
-        calldata: ""
+        calldata: {
+          [Sequelize.Op.ne]: ""
+        },
+        [Sequelize.Op.or]: openseaTokenFilters
       },
-      order: [
-        ["id", "DESC"]
-      ],
     });
     if (ordersInDb.length > 0) {
       for (const order of ordersInDb) {
-        orders.seaport.db.push({ price: order.price, calldata: order.calldata });
+        orders.seaport.db.push({ price: order.price, token_id: parseInt(order.token_id.toString("hex"), 16), calldata: order.calldata });
         openseaLeftTokens.splice(openseaLeftTokens.indexOf(parseInt(order.token_id.toString("hex"), 16)), 1);
       }
     }
@@ -126,7 +133,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
         continue;
       }
 
-      orders.seaport.remote.push({ order: order });
+      orders.seaport.remote.push(order);
     }
   }
   if (missingTokens.length > 0) {
@@ -165,6 +172,14 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
 
   let value = BigNumber.from(0);
   const tradeDetails = [];
+  if (orders.seaport.db.length > 0) {
+    for (const order of orders.seaport.db) {
+      const calldata = order.calldata;
+      const orderValue = ethers.utils.formatEther(order.price);
+      tradeDetails.push({ marketId: 1, value: orderValue, tradeData: calldata });
+      value = value.add(BigNumber.from(orderValue));
+    }
+  }
   if (orders.seaport.remote.length > 0) {
     for (const order of orders.seaport.remote) {
       const basicOrderParameters = getBasicOrderParametersFromOrder(order);
