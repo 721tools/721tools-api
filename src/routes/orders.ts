@@ -4,13 +4,15 @@ import fs from "fs";
 import path from "path";
 import Sequelize from 'sequelize';
 import { BigNumber, ethers } from "ethers";
-import { OpenseaCollections, LimitOrders } from '../dal/db';
+import { OpenseaCollections, LimitOrders, Orders } from '../dal/db';
 import { HttpError } from '../model/http-error';
+import { OrderType } from '../model/order-type';
 import { parseAddress } from '../helpers/binary_utils';
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
 import { getOrders } from "../helpers/opensea/order_utils";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
+import { parseTokenId } from "../helpers/binary_utils";
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 
@@ -73,13 +75,39 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
 
   const openseaTokens = tokens.filter(token => token.platform == 0);
   const missingTokens = [];
-  const calldatas = [];
+  const openseaLeftTokens = openseaTokens.slice();;
+  const orders = {
+    seaport: {
+      db: [],
+      remote: []
+    }
+  };
+
   if (openseaTokens.length > 0) {
-    const openseaOrders = await getOrders(openseaTokens, contract_address);
+    const ordersInDb = await Orders.findAll({
+      where: {
+        contract_address: parseAddress(contract_address),
+        type: OrderType.AUCTION_CREATED,
+        token_id: tokens.map(tokenId => parseTokenId(tokenId)),
+        calldata: ""
+      },
+      order: [
+        ["id", "DESC"]
+      ],
+    });
+    if (ordersInDb.length > 0) {
+      for (const order of ordersInDb) {
+        orders.seaport.db.push({ price: order.price, calldata: order.calldata });
+        openseaLeftTokens.splice(openseaLeftTokens.indexOf(parseInt(order.token_id.toString("hex"), 16)), 1);
+      }
+    }
+
+    const openseaOrders = openseaLeftTokens.length > 0 ? await getOrders(openseaLeftTokens, contract_address) : [];
+
     const ordersMap = _.groupBy(openseaOrders, function (item) {
       return item.maker_asset_bundle.assets[0].token_id;
     });
-    for (const openseaToken of openseaTokens) {
+    for (const openseaToken of openseaLeftTokens) {
       if (!(openseaToken.token_id in ordersMap)) {
         missingTokens.push(openseaToken.token_id)
         continue;
@@ -98,7 +126,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
         continue;
       }
 
-      calldatas.push(order);
+      orders.seaport.remote.push({ order: order });
     }
   }
   if (missingTokens.length > 0) {
@@ -137,9 +165,8 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
 
   let value = BigNumber.from(0);
   const tradeDetails = [];
-  const openseaOrders = calldatas.filter(calldata => calldata.protocol_address == process.env.SEARPORT_CONTRACTR_ADDRESS);
-  if (openseaOrders.length > 0) {
-    for (const order of openseaOrders) {
+  if (orders.seaport.remote.length > 0) {
+    for (const order of orders.seaport.remote) {
       const basicOrderParameters = getBasicOrderParametersFromOrder(order);
       const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
       tradeDetails.push({ marketId: 1, value: order.current_price, tradeData: calldata });
