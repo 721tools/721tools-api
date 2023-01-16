@@ -13,14 +13,15 @@ import { getOrders } from "../helpers/opensea/order_utils";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { parseTokenId } from "../helpers/binary_utils";
+import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
+
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 
 
 const OrdersRouter = new Router({})
 
-// OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
-OrdersRouter.post('/sweep', async (ctx) => {
+OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   if (!('contract_address' in ctx.request.body)) {
     ctx.status = 400;
     ctx.body = {
@@ -37,26 +38,26 @@ OrdersRouter.post('/sweep', async (ctx) => {
     return;
   }
 
-  // const collection = await OpenseaCollections.findOne({
-  //   where: {
-  //     contract_address: parseAddress(contract_address)
-  //   }
-  // });
+  const collection = await OpenseaCollections.findOne({
+    where: {
+      contract_address: parseAddress(contract_address)
+    }
+  });
 
-  // if (!collection) {
-  //   ctx.status = 400;
-  //   ctx.body = {
-  //     error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
-  //   }
-  //   return;
-  // }
-  // if (collection.status == 1) {
-  //   ctx.status = 400;
-  //   ctx.body = {
-  //     error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
-  //   }
-  //   return;
-  // }
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
+    }
+    return;
+  }
+  if (collection.status == 1) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_CONTRACT_ADDRSS]
+    }
+    return;
+  }
 
   const tokens = ctx.request.body['tokens'];
   if (!tokens || tokens.length == 0) {
@@ -247,9 +248,24 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
+  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
+  const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
+  if (wethBalance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_INSUFFICIEN]
+    }
+    return;
+  }
 
-  // @todo judge weth balance
-  // @todo judge weth allowance
+  const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
+  if (wethAllowance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
+    }
+    return;
+  }
 
   let expiration = getNumberParam('expiration', ctx);
   if (expiration <= 0) {
