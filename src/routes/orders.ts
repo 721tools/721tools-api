@@ -183,7 +183,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     for (const order of orders.seaport.db) {
       const calldata = order.calldata;
       const orderValue = ethers.utils.formatEther(order.price);
-      tradeDetails.push({ marketId: 2, value: orderValue, tradeData: calldata });
+      tradeDetails.push({ marketId: 10, value: orderValue, tradeData: calldata });
       value = value.add(BigNumber.from(orderValue));
     }
   }
@@ -191,7 +191,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     for (const order of orders.seaport.remote) {
       const basicOrderParameters = getBasicOrderParametersFromOrder(order);
       const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
-      tradeDetails.push({ marketId: 2, value: order.current_price, tradeData: calldata });
+      tradeDetails.push({ marketId: 10, value: order.current_price, tradeData: calldata });
       value = value.add(BigNumber.from(order.current_price));
     }
   }
