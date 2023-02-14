@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import { ethers, BigNumber } from "ethers";
+import { ethers, BigNumber, utils } from "ethers";
 import _ from 'underscore';
 import fs from "fs";
 import path from "path";
@@ -207,7 +207,12 @@ const buy = async (user, limitOrder, contractAddress, tokenId, price) => {
     const order = orders[0];
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(order.current_price, 'ether'));
-    if (currentPrice <= price) {
+    if (currentPrice < price) {
+        const profit = price - currentPrice;
+        if (profit <= 0.01) {
+            return;
+        }
+
         const basicOrderParameters = getBasicOrderParametersFromOrder(order);
 
         const abi = [
@@ -238,7 +243,28 @@ const buy = async (user, limitOrder, contractAddress, tokenId, price) => {
         const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
         let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
         const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
-        console.log("calldata", data);
+
+        const gasLimit = await provider.estimateGas({
+            to: order.protocol_address,
+            data: data,
+            value: utils.parseEther(currentPrice.toString())
+        });
+        const feeData = await provider.getFeeData();
+
+        const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
+
+        if (totalGas > profit) {
+            return;
+        }
+
+        if (totalGas > profit + 0.01) {
+            return;
+        }
+
+
+        // judge balance
+        // send tx
+
         const tx = "";
 
         // @todo call by other wallet with apporved weth
