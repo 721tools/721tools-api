@@ -295,6 +295,26 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const expirationTime = new Date(expiration);
   const skipFlagged = ctx.request.body['skip_flagged'];
 
+  const nonce = ctx.request.body['nonce'];
+  const salt = ctx.request.body['salt'];
+  const signature = ctx.request.body['signature'];
+  const tokenIds = ctx.request.body['tokenIds'];
+
+  // @todo check signature
+  /**
+   *     struct OfferOrder {
+            address offerer;
+            address collection;
+            uint8 nonce;
+            address token; // TODO: only support weth(erc20) for now
+            uint8 amount;
+            uint256 price;
+            uint256 expiresAt;
+            uint256[] tokenIds;
+            string salt;
+    }
+   */
+
   await LimitOrders.create({
     user_id: user.id,
     slug: slug,
