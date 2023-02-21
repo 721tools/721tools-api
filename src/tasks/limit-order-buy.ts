@@ -134,7 +134,7 @@ async function main(): Promise<void> {
 
             // collection buy 
             if (_.isEmpty(limitOrder.traits)) {
-                await buy(user, limitOrder, contractAddress, tokenId, price);
+                await buy(provider, user, limitOrder, contractAddress, tokenId, price);
                 continue;
             }
             // buy by traits
@@ -165,11 +165,11 @@ async function main(): Promise<void> {
                     }
 
                     if (allContains) {
-                        await buy(user, limitOrder, contractAddress, tokenId, price);
+                        await buy(provider, user, limitOrder, contractAddress, tokenId, price);
                         continue;
                     }
                 } else {
-                    await buy(user, limitOrder, contractAddress, tokenId, price);
+                    await buy(provider, user, limitOrder, contractAddress, tokenId, price);
                     continue;
                 }
             }
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
 }
 
 
-const buy = async (user, limitOrder, contractAddress, tokenId, price) => {
+const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) => {
     await limiterQueue.removeTokens(1);
     const key = randomKey();
 
@@ -207,79 +207,82 @@ const buy = async (user, limitOrder, contractAddress, tokenId, price) => {
     const order = orders[0];
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(order.current_price, 'ether'));
-    if (currentPrice < price) {
-        const profit = price - currentPrice;
-        if (profit <= 0.01) {
-            return;
-        }
-
-        const basicOrderParameters = getBasicOrderParametersFromOrder(order);
-
-        const abi = [
-            'function fulfillBasicOrder(tuple(' +
-            '        address considerationToken,' +
-            '        uint256 considerationIdentifier,' +
-            '        uint256 considerationAmount,' +
-            '        address offerer,' +
-            '        address zone,' +
-            '        address offerToken,' +
-            '        uint256 offerIdentifier,' +
-            '        uint256 offerAmount,' +
-            '        uint8 basicOrderType,' +
-            '        uint256 startTime,' +
-            '        uint256 endTime,' +
-            '        bytes32 zoneHash,' +
-            '        uint256 salt,' +
-            '        bytes32 offererConduitKey,' +
-            '        bytes32 fulfillerConduitKey,' +
-            '        uint256 totalOriginalAdditionalRecipients,' +
-            '        (uint256 amount, address recipient)[] additionalRecipients,' +
-            '        bytes signature ) parameters) external payable returns (bool fulfilled)'
-        ];
-
-
-        const openseaIface = new ethers.utils.Interface(abi)
-        const calldata = openseaIface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
-        const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-        let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
-        const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
-
-        const gasLimit = await provider.estimateGas({
-            to: order.protocol_address,
-            data: data,
-            value: utils.parseEther(currentPrice.toString())
-        });
-        const feeData = await provider.getFeeData();
-
-        const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
-
-        if (totalGas > profit) {
-            return;
-        }
-
-        if (totalGas > profit + 0.01) {
-            return;
-        }
-
-
-        // judge balance
-        // send tx
-
-        const tx = "";
-
-        // @todo call by other wallet with apporved weth
-        // const tx = await signer.sendTransaction({
-        //     to: order.protocol_address,
-        // });
-        await OrderBuyLogs.create({
-            user_id: user.id,
-            contract_address: contractAddress,
-            order_id: limitOrder.id,
-            tx: tx,
-            price: price,
-            status: BuyStatus[BuyStatus.RUNNING],
-        });
+    if (currentPrice > price) {
+        return;
     }
+    const profit = price - currentPrice;
+    if (profit <= 0.01) {
+        return;
+    }
+
+    const basicOrderParameters = getBasicOrderParametersFromOrder(order);
+
+    const abi = [
+        'function fulfillBasicOrder(tuple(' +
+        '        address considerationToken,' +
+        '        uint256 considerationIdentifier,' +
+        '        uint256 considerationAmount,' +
+        '        address offerer,' +
+        '        address zone,' +
+        '        address offerToken,' +
+        '        uint256 offerIdentifier,' +
+        '        uint256 offerAmount,' +
+        '        uint8 basicOrderType,' +
+        '        uint256 startTime,' +
+        '        uint256 endTime,' +
+        '        bytes32 zoneHash,' +
+        '        uint256 salt,' +
+        '        bytes32 offererConduitKey,' +
+        '        bytes32 fulfillerConduitKey,' +
+        '        uint256 totalOriginalAdditionalRecipients,' +
+        '        (uint256 amount, address recipient)[] additionalRecipients,' +
+        '        bytes signature ) parameters) external payable returns (bool fulfilled)'
+    ];
+
+
+    const openseaIface = new ethers.utils.Interface(abi)
+    const calldata = openseaIface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
+    let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
+    const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
+
+    const gasLimit = await provider.estimateGas({
+        to: order.protocol_address,
+        data: data,
+        value: utils.parseEther(currentPrice.toString())
+    });
+    const feeData = await provider.getFeeData();
+
+    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
+
+    if (totalGas > profit) {
+        return;
+    }
+
+    if (totalGas > profit + 0.01) {
+        return;
+    }
+
+    const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
+    const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(signer.address)));
+    if (balance < totalGas) {
+        return;
+    }
+
+
+    // @todo call by other wallet with apporved weth
+    const tx = await signer.sendTransaction({
+        to: order.protocol_address,
+        data: data
+    });
+
+    await OrderBuyLogs.create({
+        user_id: user.id,
+        contract_address: contractAddress,
+        order_id: limitOrder.id,
+        tx: tx,
+        price: price,
+        status: BuyStatus[BuyStatus.RUNNING],
+    });
 
 };
 
