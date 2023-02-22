@@ -8,6 +8,8 @@ import { OpenseaCollections, LimitOrders, Orders } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseAddress } from '../helpers/binary_utils';
+import { getWethAddress } from '../helpers/opensea/erc20_utils';
+
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
 import { getOrders } from "../helpers/opensea/order_utils";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
@@ -286,12 +288,10 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     ctx.body = {
       error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
-    ctx.body = {}
     return;
   }
 
 
-  const expirationTime = new Date(expiration);
   const traits = ctx.request.body['traits']
   let items = await getItemsByTraits(collection, traits);
   let tokenIds = [];
@@ -301,7 +301,6 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
       ctx.body = {
         error: HttpError[HttpError.SYNC_TOKENS_ERROR]
       }
-      ctx.body = {}
       return;
     }
   } else {
@@ -310,7 +309,6 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
       ctx.body = {
         error: HttpError[HttpError.EMPTY_TOKENS]
       }
-      ctx.body = {}
       return;
     } else {
       tokenIds = _.map(items, (item) => item.token_id);
@@ -321,19 +319,16 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
 
   const nonce = await j721tool.nonces(user.address);
 
-  // @todo generate local
-  const salt = ctx.request.body['salt'];
-
-  // @todo query from local
+  const salt = _.times(77, () => _.random(9).toString(36)).join('');
 
   ctx.body = {
     offerer: user.address,
     collection: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
-    nonce: nonce,
-    token: "",
+    nonce: nonce.toNumber(),
+    token: getWethAddress(),
     amount: amount,
     price: price,
-    expiresAt: expirationTime,
+    expiresAt: expiration,
     tokenIds: tokenIds,
     salt: salt,
   }
