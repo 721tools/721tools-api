@@ -4,6 +4,8 @@ import fs from "fs";
 import path from "path";
 import Sequelize from 'sequelize';
 import { BigNumber, ethers } from "ethers";
+import { recoverTypedSignature, SignTypedDataVersion, TypedMessage } from '@metamask/eth-sig-util';
+
 import { OpenseaCollections, LimitOrders, Orders } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
@@ -327,7 +329,7 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     nonce: nonce.toNumber(),
     token: getWethAddress(),
     amount: amount,
-    price: price,
+    price: ethers.utils.parseEther(price.toString()),
     expiresAt: expiration,
     tokenIds: tokenIds,
     salt: salt,
@@ -419,33 +421,65 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     ctx.body = {
       error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
-    ctx.status = 200;
-    ctx.body = {}
+    return;
   }
 
 
   const expirationTime = new Date(expiration);
   const skipFlagged = ctx.request.body['skip_flagged'];
 
-  const nonce = ctx.request.body['nonce'];
-  const salt = ctx.request.body['salt'];
-  const signature = ctx.request.body['signature'];
-  const tokenIds = ctx.request.body['tokenIds'];
+  const msgParams = JSON.stringify({
+    domain: {
+      chainId: process.env.NETWORK === 'goerli' ? 5 : 1,
+      name: 'Limit Order',
+      verifyingContract: process.env.CONTRACT_ADDRESS,
+      version: '1',
+    },
+    message: {
+      offerer: user.address,
+      collection: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+      nonce: ctx.request.body['nonce'],
+      token: getWethAddress(),
+      amount: amount,
+      price: ethers.utils.parseEther(price.toString()),
+      expiresAt: expiration,
+      tokenIds: ctx.request.body['tokenIds'],
+      salt: ctx.request.body['salt'],
+    },
+    primaryType: 'Order',
+    types: {
+      EIP712Domain: [
+        { name: 'name', type: 'string' },
+        { name: 'version', type: 'string' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'verifyingContract', type: 'address' },
+      ],
+      Order: [
+        { name: "offerer", type: "address" },
+        { name: "collection", type: "address" },
+        { name: "nonce", type: "uint256" },
+        { name: "token", type: "address" },
+        { name: "amount", type: "uint256" },
+        { name: "expiresAt", type: "uint256" },
+        { name: "tokenIds", type: "uint256[]" },
+        { name: "salt", type: "string" },
+      ],
+    },
+  });
+  const restored = recoverTypedSignature({
+    data: JSON.parse(msgParams),
+    signature: ctx.request.body['signature'],
+    version: SignTypedDataVersion.V4,
+  });
 
-  // @todo check signature
-  /**
-   *     struct OfferOrder {
-            address offerer;
-            address collection;
-            uint8 nonce;
-            address token; // TODO: only support weth(erc20) for now
-            uint8 amount;
-            uint256 price;
-            uint256 expiresAt;
-            uint256[] tokenIds;
-            string salt;
+  if (ethers.utils.getAddress(restored) !== ethers.utils.getAddress(user.address)) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
-   */
+    ctx.body = {}
+    return;
+  }
 
   await LimitOrders.create({
     user_id: user.id,
