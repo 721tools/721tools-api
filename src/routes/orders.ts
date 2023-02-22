@@ -427,7 +427,10 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
 
   const expirationTime = new Date(expiration);
   const skipFlagged = ctx.request.body['skip_flagged'];
-
+  const tokenIds = ctx.request.body['tokenIds'];
+  const nonce = ctx.request.body['nonce'];
+  const salt = ctx.request.body['salt'];
+  const signature = ctx.request.body['signature'];
   const msgParams = JSON.stringify({
     domain: {
       chainId: process.env.NETWORK === 'goerli' ? 5 : 1,
@@ -438,13 +441,13 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     message: {
       offerer: user.address,
       collection: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
-      nonce: ctx.request.body['nonce'],
+      nonce: nonce,
       token: getWethAddress(),
       amount: amount,
       price: ethers.utils.parseEther(price.toString()),
       expiresAt: expiration,
-      tokenIds: ctx.request.body['tokenIds'],
-      salt: ctx.request.body['salt'],
+      tokenIds: tokenIds,
+      salt: salt,
     },
     primaryType: 'Order',
     types: {
@@ -468,7 +471,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   });
   const restored = recoverTypedSignature({
     data: JSON.parse(msgParams),
-    signature: ctx.request.body['signature'],
+    signature: signature,
     version: SignTypedDataVersion.V4,
   });
 
@@ -491,6 +494,10 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     skip_flagged: skipFlagged,
     status: LimitOrderStatus[LimitOrderStatus.INIT],
     traits: ctx.request.body['traits'],
+    token_ids: tokenIds,
+    nonce: nonce,
+    salt: salt,
+    signature: signature,
   });
   ctx.body = {}
 });

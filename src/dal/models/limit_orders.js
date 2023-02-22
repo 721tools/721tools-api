@@ -49,6 +49,25 @@ module.exports = class LimitOrders extends Model {
         allowNull: false,
         defaultValue: false
       },
+      token_ids: {
+        type: DataTypes.JSON,
+        allowNull: true
+      },
+      nonce: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      },
+      salt: {
+        type: DataTypes.STRING(128),
+        allowNull: false,
+        defaultValue: ""
+      },
+      signature: {
+        type: DataTypes.STRING(128),
+        allowNull: false,
+        defaultValue: ""
+      },
       status: {
         type: DataTypes.STRING(16),
         allowNull: false,
