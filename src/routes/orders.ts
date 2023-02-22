@@ -201,6 +201,119 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   ctx.body = { value: value.toString(), calldata: data };
 });
 
+OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+  if (!('slug' in ctx.request.body)) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+  const slug = ctx.request.body['slug'];
+  if (!slug) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  const collection = await OpenseaCollections.findOne({
+    where: {
+      slug: slug
+    }
+  });
+
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+
+  let amount = getNumberParam('amount', ctx);
+  if (amount <= 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_AMOUNT]
+    }
+    return;
+  }
+
+  let price = getNumberParam('price', ctx);
+  if (price <= 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_PRICE]
+    }
+    return;
+  }
+
+  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
+  const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
+  if (wethBalance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_INSUFFICIEN]
+    }
+    return;
+  }
+
+  const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
+  if (wethAllowance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
+    }
+    return;
+  }
+
+  let expiration = getNumberParam('expiration', ctx);
+  if (expiration <= 0) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
+    }
+    return;
+  }
+  // after 1 hour
+  if (expiration < new Date().getTime() + 60 * 60 * 1000) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
+    }
+    ctx.status = 200;
+    ctx.body = {}
+  }
+
+
+  const expirationTime = new Date(expiration);
+  const skipFlagged = ctx.request.body['skip_flagged'];
+
+  // @todo get from contract
+  const nonce = ctx.request.body['nonce'];
+
+  // @todo generate local
+  const salt = ctx.request.body['salt'];
+
+  // @todo query from local
+  const tokenIds = ctx.request.body['tokenIds'];
+
+  ctx.body = {
+    offerer: user.address,
+    collection: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+    nonce: nonce,
+    token: "",
+    amount: amount,
+    price: price,
+    expiresAt: expirationTime,
+    tokenIds: tokenIds,
+    salt: salt,
+  }
+});
 
 OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
