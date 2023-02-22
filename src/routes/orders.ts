@@ -317,9 +317,9 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     }
   }
 
+  const j721tool = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, provider);
 
-  // @todo get from contract
-  const nonce = ctx.request.body['nonce'];
+  const nonce = await j721tool.nonces(user.address);
 
   // @todo generate local
   const salt = ctx.request.body['salt'];
