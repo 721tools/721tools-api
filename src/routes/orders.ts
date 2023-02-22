@@ -14,6 +14,7 @@ import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { parseTokenId } from "../helpers/binary_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
+import { getItemsByTraits } from "../helpers/item_utils";
 
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
@@ -285,13 +286,37 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     ctx.body = {
       error: HttpError[HttpError.NOT_VALID_EXPIRATION]
     }
-    ctx.status = 200;
     ctx.body = {}
+    return;
   }
 
 
   const expirationTime = new Date(expiration);
-  const skipFlagged = ctx.request.body['skip_flagged'];
+  const traits = ctx.request.body['traits']
+  let items = await getItemsByTraits(collection, traits);
+  let tokenIds = [];
+  if (_.isEmpty(traits)) {
+    if (items.length == 0) {
+      ctx.status = 500;
+      ctx.body = {
+        error: HttpError[HttpError.SYNC_TOKENS_ERROR]
+      }
+      ctx.body = {}
+      return;
+    }
+  } else {
+    if (items.length == 0) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.EMPTY_TOKENS]
+      }
+      ctx.body = {}
+      return;
+    } else {
+      tokenIds = _.map(items, (item) => item.token_id);
+    }
+  }
+
 
   // @todo get from contract
   const nonce = ctx.request.body['nonce'];
@@ -300,7 +325,6 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
   const salt = ctx.request.body['salt'];
 
   // @todo query from local
-  const tokenIds = ctx.request.body['tokenIds'];
 
   ctx.body = {
     offerer: user.address,

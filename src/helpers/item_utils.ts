@@ -64,18 +64,67 @@ export const setOrderItemInfo = async (orders, items, collection) => {
     return orders;
 };
 
-export const getItemsByTraits = async (collection, traits, skipFlagged) => {
-    if (_.isEmpty(traits)) {
-        return null;
-    }
+export const getItemsByTraitsAndSkipFlagged = async (collection, traits, skipFlagged) => {
     const where = {
         contract_address: collection.contract_address,
     };
     if (skipFlagged) {
         where['supports_wyvern'] = false;
     }
-    const items = await OpenseaItems.findAll();
+    const items = await OpenseaItems.findAll({
+        where: where
+    });
     if (items.length == 0) {
+        return items;
+    }
+    if (_.isEmpty(traits)) {
+        return items;
+    }
+    const result = [];
+    for (const item of items) {
+        if (_.isEmpty(item.traits)) {
+            continue;
+        }
+        const traitsMap = _.groupBy(item.traits, function (item) {
+            return item.trait_type;
+        });
+
+        let allContains = true;
+        for (const traitType of Object.keys(traits)) {
+            let traitContains = false;
+            if (traitType in traitsMap) {
+                const traitValues = traitsMap[traitType].map(trait => {
+                    return trait.value
+                });
+                for (const traitValue of traits[traitType]) {
+                    if (traitValues.includes(traitValue)) {
+                        traitContains = true;
+                        break;
+                    }
+                }
+            }
+            if (!traitContains) {
+                allContains = false;
+                break;
+            }
+        }
+        if (allContains) {
+            result.push(item);
+        }
+    }
+    return result;
+}
+
+export const getItemsByTraits = async (collection, traits) => {
+    const items = await OpenseaItems.findAll({
+        where: {
+            contract_address: collection.contract_address,
+        }
+    });
+    if (items.length == 0) {
+        return items;
+    }
+    if (_.isEmpty(traits)) {
         return items;
     }
     const result = [];

@@ -8,7 +8,7 @@ import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
-import { setItemInfo, setOrderItemInfo, getItemsByTraits } from "../helpers/item_utils";
+import { setItemInfo, setOrderItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
 
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
@@ -329,7 +329,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
   }
   const traits = ctx.request.body['traits'];
   const skipFlagged = ctx.request.body['skip_flagged'];
-  let items = await getItemsByTraits(collection, traits, skipFlagged);
+  let items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
 
   let events = [];
   if (event_types.includes(OrderType[OrderType.AUCTION_CREATED])
@@ -576,7 +576,7 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
 
   const traits = ctx.request.body['traits'];
   const skipFlagged = ctx.request.body['skip_flagged'];
-  let items = await getItemsByTraits(collection, traits, skipFlagged);
+  let items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items) {
     const tokenIds = _.map(items, (item) => item.token_id);
     where['token_id'] = tokenIds;
@@ -717,7 +717,7 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
 
   const traits = ctx.request.body['traits'];
   const skipFlagged = ctx.request.body['skip_flagged'];
-  let items = await getItemsByTraits(collection, traits, skipFlagged);
+  let items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   const where = {
     where: {
       contract_address: collection.contract_address,
