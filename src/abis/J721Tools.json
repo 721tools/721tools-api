@@ -10,11 +10,6 @@
                 "internalType": "address",
                 "name": "_converter",
                 "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "_guardian",
-                "type": "address"
             }
         ],
         "stateMutability": "nonpayable",
@@ -55,51 +50,42 @@
     {
         "inputs": [
             {
-                "internalType": "address",
-                "name": "_affiliate",
-                "type": "address"
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "target",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "callData",
+                        "type": "bytes"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct J721Tools.Call[]",
+                "name": "calls",
+                "type": "tuple[]"
             }
         ],
-        "name": "addAffiliate",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "_marketId",
-                "type": "uint256"
-            }
-        ],
-        "name": "addSponsoredMarket",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "affiliates",
+        "name": "aggregate",
         "outputs": [
             {
-                "internalType": "address",
-                "name": "affiliate",
-                "type": "address"
+                "internalType": "uint256",
+                "name": "blockNumber",
+                "type": "uint256"
             },
             {
-                "internalType": "bool",
-                "name": "isActive",
-                "type": "bool"
+                "internalType": "bytes[]",
+                "name": "returnData",
+                "type": "bytes[]"
             }
         ],
-        "stateMutability": "view",
+        "stateMutability": "payable",
         "type": "function"
     },
     {
@@ -255,7 +241,7 @@
                     },
                     {
                         "internalType": "string",
-                        "name": "slat",
+                        "name": "salt",
                         "type": "string"
                     }
                 ],
@@ -335,7 +321,7 @@
                     },
                     {
                         "internalType": "string",
-                        "name": "slat",
+                        "name": "salt",
                         "type": "string"
                     }
                 ],
@@ -416,7 +402,7 @@
                     },
                     {
                         "internalType": "string",
-                        "name": "slat",
+                        "name": "salt",
                         "type": "string"
                     }
                 ],
@@ -482,7 +468,7 @@
                     },
                     {
                         "internalType": "string",
-                        "name": "slat",
+                        "name": "salt",
                         "type": "string"
                     }
                 ],
@@ -500,19 +486,6 @@
             }
         ],
         "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "guardian",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -1076,30 +1049,6 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "sponsoredMarkets",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "marketId",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bool",
-                "name": "isActive",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
                 "internalType": "bytes4",
                 "name": "interfaceId",
                 "type": "bytes4"
@@ -1111,19 +1060,6 @@
                 "internalType": "bool",
                 "name": "",
                 "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "takeFee",
-        "outputs": [
-            {
-                "internalType": "uint8",
-                "name": "",
-                "type": "uint8"
             }
         ],
         "stateMutability": "view",
@@ -1145,60 +1081,54 @@
     {
         "inputs": [
             {
-                "internalType": "uint256",
-                "name": "_affiliateIndex",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "_affiliate",
-                "type": "address"
-            },
-            {
                 "internalType": "bool",
-                "name": "_IsActive",
+                "name": "requireSuccess",
                 "type": "bool"
-            }
-        ],
-        "name": "updateAffiliate",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_guardian",
-                "type": "address"
-            }
-        ],
-        "name": "updateGuardian",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "_marketIndex",
-                "type": "uint256"
             },
             {
-                "internalType": "uint256",
-                "name": "_marketId",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bool",
-                "name": "_isActive",
-                "type": "bool"
+                "components": [
+                    {
+                        "internalType": "address",
+                        "name": "target",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "callData",
+                        "type": "bytes"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "amount",
+                        "type": "uint256"
+                    }
+                ],
+                "internalType": "struct J721Tools.Call[]",
+                "name": "calls",
+                "type": "tuple[]"
             }
         ],
-        "name": "updateSponsoredMarket",
-        "outputs": [],
-        "stateMutability": "nonpayable",
+        "name": "tryAggregate",
+        "outputs": [
+            {
+                "components": [
+                    {
+                        "internalType": "bool",
+                        "name": "success",
+                        "type": "bool"
+                    },
+                    {
+                        "internalType": "bytes",
+                        "name": "returnData",
+                        "type": "bytes"
+                    }
+                ],
+                "internalType": "struct J721Tools.Result[]",
+                "name": "returnData",
+                "type": "tuple[]"
+            }
+        ],
+        "stateMutability": "payable",
         "type": "function"
     },
     {
