@@ -336,6 +336,34 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
   }
 });
 
+
+OrdersRouter.get('/:id/params', requireLogin, requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+  const limitOrder = await LimitOrders.findOne({
+    id: ctx.params.id,
+    user_id: user.id
+  });
+  if (!limitOrder) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.LIMIT_ORDER_NOT_FOUND]
+    }
+    return;
+  }
+
+  ctx.body = {
+    offerer: user.address,
+    collection: '0x' + Buffer.from(limitOrder.contract_address, 'binary').toString('hex'),
+    nonce: limitOrder.nonce,
+    token: getWethAddress(),
+    amount: limitOrder.amount,
+    price: ethers.utils.parseEther(limitOrder.price.toString()),
+    expiresAt: limitOrder.expiration,
+    tokenIds: limitOrder.tokenIds,
+    salt: limitOrder.salt,
+  }
+});
+
 OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
 
