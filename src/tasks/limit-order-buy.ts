@@ -241,7 +241,7 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
 
 
     const openseaIface = new ethers.utils.Interface(abi)
-    const calldata = openseaIface.encodeFunctionData("fulfillBasicOrder", [basicOrderParameters]);
+    const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
     let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
 
@@ -264,15 +264,20 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
 
     const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
     const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(signer.address)));
-    if (balance < totalGas) {
+    if (balance < (totalGas + currentPrice)) {
         return;
     }
 
 
+    // 1: batchBuyWithETH 
+    // 2: fillOrder
+    // 3: Unwrap WETH
+
     // @todo call by other wallet with apporved weth
     const tx = await signer.sendTransaction({
         to: order.protocol_address,
-        data: data
+        data: data,
+        value: order.current_price
     });
 
     await OrderBuyLogs.create({
