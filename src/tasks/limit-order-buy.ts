@@ -15,6 +15,7 @@ import { getBasicOrderParametersFromOrder } from '../helpers/order_utils';
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 import { randomKey } from '../helpers/opensea/key_utils';
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
+const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 
 import { redis } from '../dal/mq';
 
@@ -218,30 +219,7 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
 
     const basicOrderParameters = getBasicOrderParametersFromOrder(order);
 
-    const abi = [
-        'function fulfillBasicOrder(tuple(' +
-        '        address considerationToken,' +
-        '        uint256 considerationIdentifier,' +
-        '        uint256 considerationAmount,' +
-        '        address offerer,' +
-        '        address zone,' +
-        '        address offerToken,' +
-        '        uint256 offerIdentifier,' +
-        '        uint256 offerAmount,' +
-        '        uint8 basicOrderType,' +
-        '        uint256 startTime,' +
-        '        uint256 endTime,' +
-        '        bytes32 zoneHash,' +
-        '        uint256 salt,' +
-        '        bytes32 offererConduitKey,' +
-        '        bytes32 fulfillerConduitKey,' +
-        '        uint256 totalOriginalAdditionalRecipients,' +
-        '        (uint256 amount, address recipient)[] additionalRecipients,' +
-        '        bytes signature ) parameters) external payable returns (bool fulfilled)'
-    ];
-
-
-    const openseaIface = new ethers.utils.Interface(abi)
+    const openseaIface = new ethers.utils.Interface(seaportProxyAbi)
     const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
     let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
