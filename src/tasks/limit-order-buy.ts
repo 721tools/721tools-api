@@ -12,6 +12,7 @@ import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { getBasicOrderParametersFromOrder } from '../helpers/order_utils';
+import { getCalldata } from "../helpers/order_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 import { randomKey } from '../helpers/opensea/key_utils';
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
@@ -186,52 +187,35 @@ async function main(): Promise<void> {
 
 const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) => {
     await limiterQueue.removeTokens(1);
-    const key = randomKey();
 
-    // https://api.opensea.io/v2/orders/ethereum/seaport/listings?asset_contract_address=0xd532b88607b1877fe20c181cba2550e3bbd6b31c&order_by=eth_price&order_direction=asc&token_ids=5852&limit=1&format=json
-    const response = await gotScraping({
-        url: `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&limit=1&order_by=eth_price&order_direction=asc&format=json`,
-        headers: {
-            'content-type': 'application/json',
-            'X-API-KEY': key
-        },
-    });
-    if (response.statusCode != 200) {
-        console.log(`User with id ${user.id} buy ${contractAddress}#${tokenId} with price ${price} error`, response.body);
-        return false;
-    }
-    const orders = JSON.parse(response.body).orders;
-    if (!orders || orders.length < 1) {
-        console.log(`Get no order for token ${contractAddress}#${tokenId} `, response.body);
-        return false;
-    }
+    const callDataResult = await getCalldata([{
+        platform: 0,
+        token_id: tokenId,
+        price: price,
+    }], contractAddress);
 
-    const order = orders[0];
-
-    const currentPrice = parseFloat(ethers.utils.formatUnits(order.current_price, 'ether'));
-    if (currentPrice > price) {
+    if (!callDataResult.success) {
         return;
     }
+    const data = callDataResult.calldata;
+
+
+    const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
+
     const profit = price - currentPrice;
     if (profit <= 0.01) {
         return;
     }
 
-    const basicOrderParameters = getBasicOrderParametersFromOrder(order);
-
-    const openseaIface = new ethers.utils.Interface(seaportProxyAbi)
-    const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
-    let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
-    const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [[0, order.current_price, calldata]]);
-
     const gasLimit = await provider.estimateGas({
-        to: order.protocol_address,
+        to: process.env.CONTRACT_ADDRESS,
         data: data,
-        value: utils.parseEther(currentPrice.toString())
+        value: callDataResult.value
     });
     const feeData = await provider.getFeeData();
 
     const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
+
 
     if (totalGas > profit) {
         return;
@@ -247,16 +231,15 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
         return;
     }
 
-
     // 1: batchBuyWithETH 
     // 2: fillOrder
     // 3: Unwrap WETH
 
     // @todo call by other wallet with apporved weth
     const tx = await signer.sendTransaction({
-        to: order.protocol_address,
+        to: process.env.CONTRACT_ADDRESS,
         data: data,
-        value: order.current_price
+        value: callDataResult.value
     });
 
     await OrderBuyLogs.create({
