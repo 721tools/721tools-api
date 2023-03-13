@@ -1,5 +1,5 @@
 import Sequelize from 'sequelize';
-import { ethers, BigNumber, utils } from "ethers";
+import { ethers, utils } from "ethers";
 import _ from 'underscore';
 import fs from "fs";
 import path from "path";
@@ -11,6 +11,7 @@ import { LimitOrderStatus } from '../model/limit-order-status';
 import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
+import { getBasicOrderParametersFromOrder } from '../helpers/order_utils';
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 import { randomKey } from '../helpers/opensea/key_utils';
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
@@ -290,54 +291,6 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
     });
 
 };
-
-const getBasicOrderParametersFromOrder = (order) => {
-    const basicOrderParameters = {
-        considerationToken: '0x0000000000000000000000000000000000000000',
-        considerationIdentifier: 0,
-        considerationAmount: undefined,
-        offerer: undefined,
-        zone: undefined,
-        offerToken: undefined,
-        offerIdentifier: undefined,
-        offerAmount: 1,
-        basicOrderType: 2,
-        startTime: undefined,
-        endTime: undefined,
-        zoneHash: undefined,
-        salt: undefined,
-        offererConduitKey: undefined,
-        fulfillerConduitKey: undefined,
-        totalOriginalAdditionalRecipients: undefined,
-        additionalRecipients: [],
-        signature: undefined
-    }
-    basicOrderParameters.offerer = ethers.utils.getAddress(order.maker.address);
-    basicOrderParameters.zone = order.protocol_data.parameters.zone;
-    basicOrderParameters.offerToken = order.protocol_data.parameters.offer[0].token;
-    basicOrderParameters.offerIdentifier = order.protocol_data.parameters.offer[0].identifierOrCriteria;
-    basicOrderParameters.startTime = order.listing_time;
-    basicOrderParameters.endTime = order.expiration_time;
-    basicOrderParameters.basicOrderType = order.protocol_data.parameters.orderType;
-    basicOrderParameters.zoneHash = order.protocol_data.parameters.zoneHash;
-    basicOrderParameters.salt = order.protocol_data.parameters.salt;
-    basicOrderParameters.offererConduitKey = order.protocol_data.parameters.conduitKey;
-    basicOrderParameters.fulfillerConduitKey = order.protocol_data.parameters.conduitKey;
-    basicOrderParameters.totalOriginalAdditionalRecipients = order.protocol_data.parameters.totalOriginalConsiderationItems - 1
-    basicOrderParameters.signature = order.protocol_data.signature;
-    for (const consider of order.protocol_data.parameters.consideration) {
-        if (consider.recipient === basicOrderParameters.offerer) {
-            basicOrderParameters.considerationAmount = consider.startAmount;
-            continue;
-        }
-
-        basicOrderParameters.additionalRecipients.push({
-            amount: consider.startAmount,
-            recipient: consider.recipient
-        });
-    }
-    return basicOrderParameters;
-}
 
 main();
 

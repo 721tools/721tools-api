@@ -12,7 +12,7 @@ import { parseAddress } from '../helpers/binary_utils';
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
 
 import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
-import { getCalldata } from "../helpers/opensea/order_utils";
+import { getCalldata } from "../helpers/order_utils";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';

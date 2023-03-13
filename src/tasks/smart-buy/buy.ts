@@ -5,6 +5,7 @@ import { gotScraping } from 'got-scraping';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 import { FlashbotsBundleProvider, FlashbotsBundleResolution } from '@flashbots/ethers-provider-bundle';
 
+import { getBasicOrderParametersFromOrder } from '../../helpers/order_utils';
 import { SmartBuys, User, OpenseaCollections, OpenseaItems } from '../../dal/db';
 import { SmartBuyStatus } from '../../model/smart-buy-status';
 import { SignType } from '../../model/sign-type';
@@ -290,54 +291,6 @@ const buy = async (user, provider, contractAddress, tokenId, price) => {
     }
 
 };
-
-const getBasicOrderParametersFromOrder = (order) => {
-    const basicOrderParameters = {
-        considerationToken: '0x0000000000000000000000000000000000000000',
-        considerationIdentifier: 0,
-        considerationAmount: undefined,
-        offerer: undefined,
-        zone: undefined,
-        offerToken: undefined,
-        offerIdentifier: undefined,
-        offerAmount: 1,
-        basicOrderType: 2,
-        startTime: undefined,
-        endTime: undefined,
-        zoneHash: undefined,
-        salt: undefined,
-        offererConduitKey: undefined,
-        fulfillerConduitKey: undefined,
-        totalOriginalAdditionalRecipients: undefined,
-        additionalRecipients: [],
-        signature: undefined
-    }
-    basicOrderParameters.offerer = ethers.utils.getAddress(order.maker.address);
-    basicOrderParameters.zone = order.protocol_data.parameters.zone;
-    basicOrderParameters.offerToken = order.protocol_data.parameters.offer[0].token;
-    basicOrderParameters.offerIdentifier = order.protocol_data.parameters.offer[0].identifierOrCriteria;
-    basicOrderParameters.startTime = order.listing_time;
-    basicOrderParameters.endTime = order.expiration_time;
-    basicOrderParameters.basicOrderType = order.protocol_data.parameters.orderType;
-    basicOrderParameters.zoneHash = order.protocol_data.parameters.zoneHash;
-    basicOrderParameters.salt = order.protocol_data.parameters.salt;
-    basicOrderParameters.offererConduitKey = order.protocol_data.parameters.conduitKey;
-    basicOrderParameters.fulfillerConduitKey = order.protocol_data.parameters.conduitKey;
-    basicOrderParameters.totalOriginalAdditionalRecipients = order.protocol_data.parameters.totalOriginalConsiderationItems - 1
-    basicOrderParameters.signature = order.protocol_data.signature;
-    for (const consider of order.protocol_data.parameters.consideration) {
-        if (consider.recipient === basicOrderParameters.offerer) {
-            basicOrderParameters.considerationAmount = consider.startAmount;
-            continue;
-        }
-
-        basicOrderParameters.additionalRecipients.push({
-            amount: consider.startAmount,
-            recipient: consider.recipient
-        });
-    }
-    return basicOrderParameters;
-}
 
 main();
 

@@ -5,14 +5,14 @@ import fs from "fs";
 import path from "path";
 import Sequelize from 'sequelize';
 
-import { Orders } from '../../dal/db';
-import { randomKey } from './key_utils';
-import { HttpError } from '../../model/http-error';
-import { OrderType } from '../../model/order-type';
-import { parseTokenId, parseAddress } from "../../helpers/binary_utils";
+import { Orders } from '../dal/db';
+import { randomKey } from './opensea/key_utils';
+import { HttpError } from '../model/http-error';
+import { OrderType } from '../model/order-type';
+import { parseTokenId, parseAddress } from "./binary_utils";
 
-const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../../abis/SeaportProxy.json')).toString();
-const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../../abis/J721Tools.json')).toString();
+const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
+const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
 export const getOrders = async (openseaTokens, contractAddress) => {
     let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
