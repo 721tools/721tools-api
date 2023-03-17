@@ -173,6 +173,33 @@ export const getCalldata = async (tokens, contractAddress) => {
 }
 
 
+export const getFillOrderCalldata = async (limitOrder, tokenId) => {
+    const tokenIds = limitOrder.token_ids;
+    if (null == tokenIds) {
+
+    }
+
+    const openseaIface = new ethers.utils.Interface(seaportProxyAbi)
+    const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[], limitOrder.signature,]);
+
+    /**
+     *  struct OfferOrder {
+            address offerer;
+            address collection;
+            uint8 nonce;
+            address token; // TODO: only support weth(erc20) for now
+            uint8 amount;
+            uint256 price;
+            uint256 expiresAt;
+            uint256[] tokenIds;
+            string salt;
+        }
+     */
+}
+
+
+
+
 export const getBasicOrderParametersFromOrder = (order) => {
     const basicOrderParameters = {
         considerationToken: '0x0000000000000000000000000000000000000000',

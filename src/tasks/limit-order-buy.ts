@@ -1,9 +1,8 @@
 import Sequelize from 'sequelize';
-import { ethers, utils } from "ethers";
+import { BigNumber, ethers, utils } from "ethers";
 import _ from 'underscore';
 import fs from "fs";
 import path from "path";
-import { gotScraping } from 'got-scraping';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
 import { LimitOrders, OrderBuyLogs, User, OpenseaCollections, OpenseaItems } from '../dal/db';
@@ -11,12 +10,8 @@ import { LimitOrderStatus } from '../model/limit-order-status';
 import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
-import { getBasicOrderParametersFromOrder } from '../helpers/order_utils';
 import { getCalldata } from "../helpers/order_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
-import { randomKey } from '../helpers/opensea/key_utils';
-const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
-const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 
 import { redis } from '../dal/mq';
 
@@ -25,6 +20,8 @@ const limiterFlexible = new RateLimiterMemory({
     duration: 0.2,
 })
 const limiterQueue = new RateLimiterQueue(limiterFlexible);
+
+const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
 
 async function main(): Promise<void> {
@@ -199,6 +196,7 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
     }
     const data = callDataResult.calldata;
 
+    const totalValue = BigNumber.from(0).sub(callDataResult.value);
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
 
@@ -231,22 +229,23 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
         return;
     }
 
+
+    const calls = [];
+    calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
+
+
+    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
+    const tx = await contract.aggregate(calls, { value: totalValue });
+
     // 1: batchBuyWithETH 
     // 2: fillOrder
     // 3: Unwrap WETH
-
-    // @todo call by other wallet with apporved weth
-    const tx = await signer.sendTransaction({
-        to: process.env.CONTRACT_ADDRESS,
-        data: data,
-        value: callDataResult.value
-    });
 
     await OrderBuyLogs.create({
         user_id: user.id,
         contract_address: contractAddress,
         order_id: limitOrder.id,
-        tx: tx,
+        tx: tx.hash,
         price: price,
         status: BuyStatus[BuyStatus.RUNNING],
     });
