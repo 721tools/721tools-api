@@ -10,7 +10,7 @@ import { LimitOrderStatus } from '../model/limit-order-status';
 import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
-import { getCalldata } from "../helpers/order_utils";
+import { getCalldata, getFillOrderCalldata } from "../helpers/order_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 
 import { redis } from '../dal/mq';
@@ -104,6 +104,11 @@ async function main(): Promise<void> {
             }
             if (collection.status == 1) {
                 continue;
+            }
+
+            const tokenIds = limitOrder.token_ids;
+            if (null == tokenIds) {
+                // @todo judge tokenId first
             }
 
             const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
@@ -232,7 +237,7 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
 
     const calls = [];
     calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
-
+    calls.push([process.env.CONTRACT_ADDRESS], await getFillOrderCalldata(limitOrder, user.address, tokenId), 0)
 
     const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
     const tx = await contract.aggregate(calls, { value: totalValue });

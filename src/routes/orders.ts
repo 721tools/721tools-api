@@ -235,7 +235,7 @@ OrdersRouter.get('/:id/params', requireLogin, requireWhitelist, async (ctx) => {
     token: getWethAddress(),
     amount: limitOrder.amount,
     price: ethers.utils.parseEther(limitOrder.price.toString()),
-    expiresAt: limitOrder.expiration,
+    expiresAt: limitOrder.expiration_time.getTime(),
     tokenIds: limitOrder.tokenIds,
     salt: limitOrder.salt,
   }
