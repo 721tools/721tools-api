@@ -11,7 +11,7 @@ import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { getCalldata, getFillOrderCalldata } from "../helpers/order_utils";
-import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
+import { getContractWethAllowance, getWethBalance, getWethAddress } from '../helpers/opensea/erc20_utils';
 
 import { redis } from '../dal/mq';
 
@@ -237,10 +237,20 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
 
     const calls = [];
     calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
-    calls.push([process.env.CONTRACT_ADDRESS], await getFillOrderCalldata(limitOrder, user.address, tokenId), 0)
+    calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, tokenId), 0]);
 
     const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
     const tx = await contract.aggregate(calls, { value: totalValue });
+
+
+    const wethIface = new utils.Interface([
+        'function approve(address spender, uint256 amount) public returns (bool)',
+        'function withdraw(uint256 wad) public'
+    ]);
+
+    const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit)]);
+    calls.push([getWethAddress(), withdrawWethCalldata, 0]);
+
 
     // 1: batchBuyWithETH 
     // 2: fillOrder
