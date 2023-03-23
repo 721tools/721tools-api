@@ -176,7 +176,14 @@ export const getCalldata = async (tokens, contractAddress) => {
 
 export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
     const openseaIface = new ethers.utils.Interface(seaportProxyAbi);
-    const index = 0 // @todo
+    let index = 0;
+    const tokenIds = limitOrder.token_ids;
+    if (null != tokenIds && tokenIds.length > 0) {
+        if (tokenIds.includes(tokenId)) {
+            index = tokenIds.indexOf(tokenId);
+        }
+    }
+
     const calldata = openseaIface.encodeFunctionData("fillOrder", [
         [
             address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), 1,
