@@ -107,8 +107,10 @@ async function main(): Promise<void> {
             }
 
             const tokenIds = limitOrder.token_ids;
-            if (null == tokenIds) {
-                // @todo judge tokenId first
+            if (null != tokenIds && tokenIds.length > 0) {
+                if (!tokenIds.includes(tokenId)) {
+                    continue;
+                }
             }
 
             const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
@@ -239,10 +241,6 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
     calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
     calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, tokenId), 0]);
 
-    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
-    const tx = await contract.aggregate(calls, { value: totalValue });
-
-
     const wethIface = new utils.Interface([
         'function approve(address spender, uint256 amount) public returns (bool)',
         'function withdraw(uint256 wad) public'
@@ -250,6 +248,9 @@ const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) 
 
     const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit)]);
     calls.push([getWethAddress(), withdrawWethCalldata, 0]);
+
+    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
+    const tx = await contract.aggregate(calls, { value: totalValue });
 
 
     // 1: batchBuyWithETH 
