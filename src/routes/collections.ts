@@ -317,11 +317,11 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     limit = 100
   }
   let event_types = [];
-  if ('event_types' in ctx.request.query) {
-    if (ctx.request.query['event_types'] instanceof Array) {
-      event_types = ctx.request.query['event_types'];
+  if ('event_types' in ctx.request.body) {
+    if (ctx.request.body['event_types'] instanceof Array) {
+      event_types = ctx.request.body['event_types'];
     } else {
-      event_types = [ctx.request.query['event_types']]
+      event_types = [ctx.request.body['event_types']]
     }
   }
   if (event_types.length == 0) {
