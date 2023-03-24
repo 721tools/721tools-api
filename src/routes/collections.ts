@@ -404,7 +404,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     if (nftTrades.length > 0) {
       Array.prototype.push.apply(events, _.map(nftTrades, (item) => ({
         token_id: item.tokenId,
-        price: item.priceETH,
+        price: parseFloat(ethers.utils.formatUnits(item.priceETH, 'ether')),
         from: item.seller,
         to: item.buyer,
         height: item.height,
@@ -514,7 +514,7 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
       buyer: item.buyer,
       seller: item.seller,
       amount: item.amount,
-      price_eth: item.priceETH,
+      price_eth: parseFloat(ethers.utils.formatUnits(item.priceETH, 'ether')),
       direction: item.direction,
       tx_hash: item.tx_hash,
       height: item.height,
