@@ -1,6 +1,6 @@
 import Router from 'koa-router';
 import Sequelize from 'sequelize';
-import { ethers } from 'ethers';
+import { ethers, BigNumber } from 'ethers';
 
 import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
@@ -559,10 +559,10 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
     return;
   }
 
-  let balance = getNumberParam('balance', ctx);
+  let balance = BigNumber.from(getNumberParam('balance', ctx));
   let buyCount = getNumberParam('count', ctx);
-  const result = { count: 0, amount: 0, tokens: [] };
-  if (balance <= 0 && buyCount <= 0) {
+  const result = { count: 0, amount: BigNumber.from(0), tokens: [] };
+  if (balance.lte(0) || buyCount <= 0) {
     ctx.body = result;
     return;
   }
@@ -592,17 +592,17 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
   });
 
   const tokens = [];
-  if (balance > 0) {
+  if (balance.gt(0)) {
     let count = 0;
     let leftBalance = balance;
     for (const order of orders) {
       let quantity = order.quantity > 0 ? order.quantity : 1;
-      if (leftBalance > order.price * quantity) {
+      if (leftBalance.gt(order.price.mul(quantity))) {
         count += quantity;
-        leftBalance -= order.price * quantity;
+        leftBalance = leftBalance.sub(order.price.mul(quantity));
         tokens.push(order);
       } else {
-        const plusCount = Math.floor(leftBalance / order.price);
+        const plusCount = leftBalance.div(order.price).toNumber();
         if (plusCount > 0) {
           count += plusCount
           tokens.push(order);
@@ -612,7 +612,7 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
     }
     result.count = count;
   } else if (buyCount > 0) {
-    let needAmount = 0;
+    let needAmount = BigNumber.from(0);
     let leftCount = buyCount;
     for (const order of orders) {
       let quantity = order.quantity > 0 ? order.quantity : 1;
@@ -621,15 +621,15 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
       }
       if (leftCount > quantity) {
         leftCount -= quantity;
-        needAmount += order.price * quantity;
+        needAmount = needAmount.add(order.price.mul(quantity));
         tokens.push(order);
       } else {
-        needAmount += (quantity - leftCount) * order.price;
+        needAmount = needAmount.add(order.price.mul(quantity - leftCount));
         tokens.push(order);
         break;
       }
     }
-    result.amount = needAmount;
+    result.amount = result.amount.add(needAmount);
   }
   if (tokens.length > 0) {
     if (items) {
@@ -739,12 +739,13 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
     orders.sort((a, b) => a.price - b.price);
     let count = 0;
     let stepCount = 1;
-    let currentStartPrice = Math.floor(orders[0].price / size) * size;
+    let currentStartPrice = Math.floor(parseFloat(ethers.utils.formatUnits(orders[0].price / size, 'ether'))) * size;
     let nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
     for (const index in orders) {
       const order = orders[index];
+      const price = parseFloat(ethers.utils.formatUnits(order.price, 'ether'));
       let quantity = order.quantity > 0 ? order.quantity : 1;
-      if (order.price < nextPrice) {
+      if (price < nextPrice) {
         count += quantity;
       } else {
         depth.push({
@@ -754,7 +755,7 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
 
         if (stepCount < maxStepCount - 1) {
           stepCount++;
-          while (nextPrice < order.price) {
+          while (nextPrice < price) {
             currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
             nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
           }
@@ -763,7 +764,7 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
           count = quantity;
         } else {
           count = orders.length - parseInt(index);
-          while (nextPrice < order.price) {
+          while (nextPrice < price) {
             currentStartPrice = parseFloat((currentStartPrice + size).toFixed(4));
             nextPrice = parseFloat((currentStartPrice + size).toFixed(4));
           }
