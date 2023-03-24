@@ -371,7 +371,8 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
       Array.prototype.push.apply(events, _.map(orders, (item) => ({
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
-        from: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
+        from: item.from,
+        owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
         event_timestamp: item.order_event_timestamp.getTime(),
         event_type: OrderType[item.type],
         quantity: item.quantity,
