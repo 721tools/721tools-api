@@ -87,7 +87,11 @@ CollectionsRouter.get('/', async (ctx) => {
     order: order
   });
   const results = [];
+
   for (const collection of rows) {
+    const sevendaysVolumns = ctx.request.query['include_sevendays_volumns'] ? await getSevenDaysVolumns(collection) : [];
+    const sevendays = Object.keys(sevendaysVolumns);
+    const oneDayPriceChange = sevendaysVolumns[sevendays[sevendays.length - 1]] - sevendaysVolumns[sevendays[sevendays.length - 2]];
     results.push({
       slug: collection.slug,
       name: collection.name,
@@ -98,7 +102,8 @@ CollectionsRouter.get('/', async (ctx) => {
       floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
       verified: collection.verified,
       rarity_enabled: collection.rarity_enabled,
-      sevendays_volumns: ctx.request.query['include_sevendays_volumns'] ? await getSevenDaysVolumns(collection) : []
+      sevendays_volumns: sevendaysVolumns,
+      one_day_price_change: oneDayPriceChange,
     });
   }
   ctx.body = {
