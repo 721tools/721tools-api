@@ -359,17 +359,6 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
       type: {
         [Op.in]: types,
       },
-      [Op.or]: [
-        {
-          calldata: { [Op.ne]: null },
-          type: OrderType.AUCTION_CREATED,
-          from: Flatform.OPENSEA,
-        },
-        {
-          type: { [Op.ne]: OrderType.AUCTION_CREATED },
-          from: { [Op.ne]: Flatform.OPENSEA }
-        },
-      ]
     };
     if (occurred_after > 0) {
       where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after) }
@@ -600,10 +589,22 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
 
   const where = {
     contract_address: collection.contract_address,
+    status: 1,
+    type: OrderType.AUCTION_CREATED,
+    [Op.or]: [
+      {
+        calldata: { [Op.ne]: null },
+        type: OrderType.AUCTION_CREATED,
+        from: Flatform.OPENSEA,
+      },
+      {
+        type: { [Op.ne]: OrderType.AUCTION_CREATED },
+        from: { [Op.ne]: Flatform.OPENSEA }
+      },
+    ],
     order_expiration_date: {
       [Sequelize.Op.gt]: new Date()
     },
-    type: OrderType.AUCTION_CREATED,
   };
 
   if (items) {
@@ -753,10 +754,22 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
   const where = {
     where: {
       contract_address: collection.contract_address,
+      status: 1,
+      type: OrderType.AUCTION_CREATED,
+      [Op.or]: [
+        {
+          calldata: { [Op.ne]: null },
+          type: OrderType.AUCTION_CREATED,
+          from: Flatform.OPENSEA,
+        },
+        {
+          type: { [Op.ne]: OrderType.AUCTION_CREATED },
+          from: { [Op.ne]: Flatform.OPENSEA }
+        },
+      ],
       order_expiration_date: {
         [Sequelize.Op.gt]: new Date()
       },
-      type: OrderType.AUCTION_CREATED,
     },
   };
   if (items) {
