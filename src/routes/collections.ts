@@ -590,6 +590,14 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
     return;
   }
 
+
+  const traits = ctx.request.body['traits'];
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  const items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  if (items && items.length == 0) {
+    return result;
+  }
+
   const where = {
     contract_address: collection.contract_address,
     order_expiration_date: {
@@ -598,9 +606,6 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
     type: OrderType.AUCTION_CREATED,
   };
 
-  const traits = ctx.request.body['traits'];
-  const skipFlagged = ctx.request.body['skip_flagged'];
-  let items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items) {
     const tokenIds = _.map(items, (item) => item.token_id);
     where['token_id'] = tokenIds;
@@ -741,7 +746,10 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
 
   const traits = ctx.request.body['traits'];
   const skipFlagged = ctx.request.body['skip_flagged'];
-  let items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  const items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  if (items && items.length == 0) {
+    return [];
+  }
   const where = {
     where: {
       contract_address: collection.contract_address,
