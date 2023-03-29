@@ -44,17 +44,18 @@ export const setItemInfo = async (items, collection) => {
 };
 
 export const setOrderItemInfo = async (orders, items, collection) => {
-    const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [item.token_id, item.dataValues]));
+    const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
     for (let index in orders) {
         const nft = orders[index];
-        if (itemMap.has(nft.token_id)) {
-            const item = itemMap.get(nft.token_id);
+        const tokenId = parseInt(nft.token_id.toString("hex"), 16).toString();
+        if (itemMap.has(tokenId)) {
+            const item = itemMap.get(tokenId);
             nft.rank = item.traits_rank;
             nft.image = item.image_url;
             nft.name = item.name;
             nft.supports_wyvern = item.supports_wyvern;
         } else {
-            nft.name = collection.name + " #" + nft.token_id;
+            nft.name = collection.name + " #" + tokenId;
             nft.image = collection.image_url;
             nft.rank = 0;
             nft.supports_wyvern = true;
