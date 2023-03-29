@@ -6,6 +6,7 @@ import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
+import { Flatform } from '../model/platform';
 import { parseTokenId } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
 import { setItemInfo, setOrderItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
@@ -359,8 +360,15 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
         [Op.in]: types,
       },
       [Op.or]: [
-        { type: { [Op.ne]: OrderType.AUCTION_CREATED } },
-        { calldata: { [Op.ne]: null } },
+        {
+          calldata: { [Op.ne]: null },
+          type: OrderType.AUCTION_CREATED,
+          from: Flatform.OPENSEA,
+        },
+        {
+          type: { [Op.ne]: OrderType.AUCTION_CREATED },
+          from: { [Op.ne]: Flatform.OPENSEA }
+        },
       ]
     };
     if (occurred_after > 0) {
