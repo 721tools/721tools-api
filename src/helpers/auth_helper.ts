@@ -11,7 +11,7 @@ export const requireLogin = async (ctx, next) => {
         };
         return;
     }
-    if (!ctx.session.user) {
+    if (!ctx.session.siwe.user) {
         ctx.status = 401;
         ctx.body = {
             error: HttpError[HttpError.UNAUTHORIZED]
