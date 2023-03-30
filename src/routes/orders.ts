@@ -134,25 +134,26 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
-  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-  // @todo open it when online
-  // const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-  // if (wethBalance < price) {
-  //   ctx.status = 400;
-  //   ctx.body = {
-  //     error: HttpError[HttpError.WETH_INSUFFICIEN]
-  //   }
-  //   return;
-  // }
+  // @todo use it as it after test
+  // const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
+  const provider = new ethers.providers.JsonRpcProvider(process.env.GOERLI_RPC_URL);
+  const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
+  if (wethBalance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_INSUFFICIEN]
+    }
+    return;
+  }
 
-  // const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
-  // if (wethAllowance < price) {
-  //   ctx.status = 400;
-  //   ctx.body = {
-  //     error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
-  //   }
-  //   return;
-  // }
+  const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
+  if (wethAllowance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
+    }
+    return;
+  }
 
   let expiration = getNumberParam('expiration', ctx);
   if (expiration <= 0) {
@@ -293,25 +294,26 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     }
     return;
   }
-  // @todo open it when online
+  // @todo use it as it after test
   // const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-  // const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-  // if (wethBalance < price) {
-  //   ctx.status = 400;
-  //   ctx.body = {
-  //     error: HttpError[HttpError.WETH_INSUFFICIEN]
-  //   }
-  //   return;
-  // }
+  const provider = new ethers.providers.JsonRpcProvider(process.env.GOERLI_RPC_URL);
+  const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
+  if (wethBalance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_INSUFFICIEN]
+    }
+    return;
+  }
 
-  // const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
-  // if (wethAllowance < price) {
-  //   ctx.status = 400;
-  //   ctx.body = {
-  //     error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
-  //   }
-  //   return;
-  // }
+  const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
+  if (wethAllowance < price) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
+    }
+    return;
+  }
 
   let expiration = getNumberParam('expiration', ctx);
   if (expiration <= 0) {
