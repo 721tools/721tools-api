@@ -57,24 +57,24 @@ AuthRouter.post("/login", async (ctx) => {
     const now = new Date();
     if (!user) {
       let smart_address = '';
-      if (await addressIsWhitelist(address)) {
-        try {
-          const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
-            address: address,
-          }, {
-            timeout: 10000
-          });
-          smart_address = response.data.data;
-        } catch (err) {
-          console.error(`${address} create smart wallet error`, err);
-          ctx.status = 500;
-          ctx.body = {
-            error: HttpError[HttpError.INTERNAL_SERVER_RROR],
-          }
-          return;
-        }
+      // if (await addressIsWhitelist(address)) {
+      //   try {
+      //     const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
+      //       address: address,
+      //     }, {
+      //       timeout: 10000
+      //     });
+      //     smart_address = response.data.data;
+      //   } catch (err) {
+      //     console.error(`${address} create smart wallet error`, err);
+      //     ctx.status = 500;
+      //     ctx.body = {
+      //       error: HttpError[HttpError.INTERNAL_SERVER_RROR],
+      //     }
+      //     return;
+      //   }
 
-      }
+      // }
       user = await User.create({
         address: address,
         smart_address: smart_address,
@@ -105,42 +105,42 @@ AuthRouter.post("/login", async (ctx) => {
         return;
       }
 
-      if (!user.smart_address) {
-        if (await addressIsWhitelist(address)) {
-          try {
-            const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
-              address: address,
-            }, {
-              timeout: 10000
-            });
-            user.smart_address = response.data.data;
-            await User.update({
-              last_login_time: now,
-              smart_address: user.smart_address,
-            }, {
-              where: {
-                id: user.id
-              }
-            });
-          } catch (err) {
-            console.error(`${address} create smart wallet error`, err);
-            ctx.status = 500;
-            ctx.body = {
-              error: HttpError[HttpError.INTERNAL_SERVER_RROR],
-            }
-            return;
-          }
+      // if (!user.smart_address) {
+      //   if (await addressIsWhitelist(address)) {
+      //     try {
+      //       const response = await axios.post(`${process.env.KMS_SIGNER_URL}/create-wallet`, {
+      //         address: address,
+      //       }, {
+      //         timeout: 10000
+      //       });
+      //       user.smart_address = response.data.data;
+      //       await User.update({
+      //         last_login_time: now,
+      //         smart_address: user.smart_address,
+      //       }, {
+      //         where: {
+      //           id: user.id
+      //         }
+      //       });
+      //     } catch (err) {
+      //       console.error(`${address} create smart wallet error`, err);
+      //       ctx.status = 500;
+      //       ctx.body = {
+      //         error: HttpError[HttpError.INTERNAL_SERVER_RROR],
+      //       }
+      //       return;
+      //     }
 
+      //   }
+      // } 
+
+      await User.update({
+        last_login_time: now,
+      }, {
+        where: {
+          id: user.id
         }
-      } else {
-        await User.update({
-          last_login_time: now,
-        }, {
-          where: {
-            id: user.id
-          }
-        });
-      }
+      });
 
     }
 
