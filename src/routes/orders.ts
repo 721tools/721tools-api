@@ -134,8 +134,8 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
+  const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
   // @todo open it when online
-  // const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
   // const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
   // if (wethBalance < price) {
   //   ctx.status = 400;
