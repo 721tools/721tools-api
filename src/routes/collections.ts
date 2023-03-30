@@ -582,7 +582,7 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
 
   const traits = ctx.request.body['traits'];
   const skipFlagged = ctx.request.body['skip_flagged'];
-  const items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
     return result;
   }
@@ -747,7 +747,7 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
 
   const traits = ctx.request.body['traits'];
   const skipFlagged = ctx.request.body['skip_flagged'];
-  const items = await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
     return [];
   }
