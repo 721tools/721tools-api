@@ -11,6 +11,13 @@ export const requireLogin = async (ctx, next) => {
         };
         return;
     }
+    if (!ctx.session.user) {
+        ctx.status = 401;
+        ctx.body = {
+            error: HttpError[HttpError.UNAUTHORIZED]
+        };
+        return;
+    }
     const userId = ctx.session.siwe.user.id;
     const user = await User.findOne({
         where: {
