@@ -413,7 +413,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     });
     if (nftTrades.length > 0) {
       Array.prototype.push.apply(events, _.map(nftTrades, (item) => ({
-        token_id: item.tokenId,
+        token_id: parseInt(item.tokenId),
         price: parseFloat(ethers.utils.formatUnits(item.priceETH, 'ether')),
         from: item.seller,
         to: item.buyer,
@@ -437,7 +437,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     }
 
     if (items.length > 0) {
-      const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
+      const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
       for (let index in events) {
         const event = events[index];
         if (itemMap.has(event.token_id)) {
