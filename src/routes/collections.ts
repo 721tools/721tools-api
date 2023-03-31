@@ -437,7 +437,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
     }
 
     if (items.length > 0) {
-      const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
+      const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
       for (let index in events) {
         const event = events[index];
         if (itemMap.has(event.token_id)) {
@@ -450,6 +450,7 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
           event.rank = 0;
           event.image_url = collection.image_url;
           event.name = collection.name + " #" + event.token_id;
+          events[index] = event;
         }
       }
 
