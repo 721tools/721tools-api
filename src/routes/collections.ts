@@ -590,17 +590,6 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
     contract_address: collection.contract_address,
     status: 1,
     type: OrderType.AUCTION_CREATED,
-    [Op.or]: [
-      {
-        calldata: { [Op.ne]: null },
-        type: OrderType.AUCTION_CREATED,
-        from: Flatform.OPENSEA,
-      },
-      {
-        type: { [Op.ne]: OrderType.AUCTION_CREATED },
-        from: { [Op.ne]: Flatform.OPENSEA }
-      },
-    ],
     order_expiration_date: {
       [Sequelize.Op.gt]: new Date()
     },
@@ -755,17 +744,6 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
       contract_address: collection.contract_address,
       status: 1,
       type: OrderType.AUCTION_CREATED,
-      [Op.or]: [
-        {
-          calldata: { [Op.ne]: null },
-          type: OrderType.AUCTION_CREATED,
-          from: Flatform.OPENSEA,
-        },
-        {
-          type: { [Op.ne]: OrderType.AUCTION_CREATED },
-          from: { [Op.ne]: Flatform.OPENSEA }
-        },
-      ],
       order_expiration_date: {
         [Sequelize.Op.gt]: new Date()
       },

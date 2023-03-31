@@ -94,7 +94,7 @@ export const getCalldata = async (tokens, contractAddress) => {
                 contract_address: parseAddress(contractAddress),
                 type: OrderType.AUCTION_CREATED,
                 calldata: {
-                    [Sequelize.Op.ne]: ""
+                    [Sequelize.Op.ne]: null
                 },
                 [Sequelize.Op.or]: openseaTokenFilters
             },
