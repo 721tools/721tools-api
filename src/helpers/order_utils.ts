@@ -8,8 +8,10 @@ import Sequelize from 'sequelize';
 import { Orders } from '../dal/db';
 import { randomKey } from './opensea/key_utils';
 import { HttpError } from '../model/http-error';
+import { Flatform } from '../model/platform';
 import { OrderType } from '../model/order-type';
 import { parseTokenId, parseAddress } from "./binary_utils";
+import { decode } from "./blur_utils";
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
 
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
@@ -51,7 +53,7 @@ export const getOrders = async (openseaTokens, contractAddress) => {
 }
 
 
-export const getCalldata = async (tokens, contractAddress) => {
+export const getCalldata = async (tokens, contractAddress, ctx) => {
     const result = {
         success: true,
         message: "",
@@ -70,8 +72,69 @@ export const getCalldata = async (tokens, contractAddress) => {
         result.message = HttpError[HttpError.TOO_MANY_TOKENS];
         return result;
     }
+    const blurTokens = tokens.filter(token => token.platform == Flatform.BLUR);
+    if (blurTokens.length > 0) {
+        if (!('blur_auth_token' in ctx.request.body)) {
+            result.success = false;
+            result.message = HttpError[HttpError.EMPTY_BLUR_AUTH_TOKEN];
+            return;
+        }
 
-    const openseaTokens = tokens.filter(token => token.platform == 0);
+        const blurAuthToken = ctx.request.body['blur_auth_token'];
+        if (!blurAuthToken) {
+            result.success = false;
+            result.message = HttpError[HttpError.EMPTY_BLUR_AUTH_TOKEN];
+            return;
+        }
+        const tokenPrices = _.map(blurTokens, (item) => {
+            return {
+                tokenId: item.token_id,
+                price: {
+                    amount: item.price,
+                    unit: "ETH"
+                }
+            }
+        });
+        const response = await gotScraping({
+            url: `https://core-api.prod.blur.io/v1/buy/${contractAddress}`,
+            body: JSON.stringify({
+                tokenPrices: tokenPrices,
+                userAddress: ctx.session.siwe.user.address
+            }),
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                'cookie': `authToken=${blurAuthToken}; walletAddress=${ctx.session.siwe.user.address}`,
+            },
+        });
+        if (response.statusCode != 200) {
+            result.success = false;
+            result.message = HttpError[HttpError.GET_BLUR_CALLDATA_ERROR];
+            console.log(`Get blur calldata failed, tokens:${JSON.stringify(tokenPrices)}, response: ${response.body}`);
+            return;
+        }
+        const responseBody = JSON.parse(response.body);
+        if (!responseBody.success) {
+            console.log(`Get blur calldata failed, tokens:${JSON.stringify(tokenPrices)}, response: ${response.body}`);
+            result.success = false;
+            result.message = HttpError[HttpError.GET_BLUR_CALLDATA_ERROR];
+            return;
+        }
+        const blurResult = JSON.parse(decode(responseBody.data));
+        if (blurResult.cancelReasons && blurResult.cancelReasons.length > 0) {
+            result.success = false;
+            result.message = HttpError[HttpError.ORDER_EXPIRED];
+            result.missing_tokens = _.map(blurResult.cancelReasons, (item) => item.tokenId);
+            return result;
+        }
+
+        const blurTxnData = blurResult.buys[0].txnData.data;
+
+        // @todo append to tx
+
+    }
+
+    const openseaTokens = tokens.filter(token => token.platform == Flatform.OPENSEA);
     const missingTokens = [];
     const openseaLeftTokens = openseaTokens.slice();
     const orders = {
