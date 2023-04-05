@@ -53,7 +53,7 @@ export const getOrders = async (openseaTokens, contractAddress) => {
 }
 
 
-export const getCalldata = async (tokens, contractAddress, ctx) => {
+export const getCalldata = async (tokens, contractAddress, blurAuthToken) => {
     const result = {
         success: true,
         message: "",
@@ -76,13 +76,6 @@ export const getCalldata = async (tokens, contractAddress, ctx) => {
 
     const blurTokens = tokens.filter(token => token.platform == Flatform.BLUR);
     if (blurTokens.length > 0) {
-        if (!('blur_auth_token' in ctx.request.body)) {
-            result.success = false;
-            result.message = HttpError[HttpError.EMPTY_BLUR_AUTH_TOKEN];
-            return;
-        }
-
-        const blurAuthToken = ctx.request.body['blur_auth_token'];
         if (!blurAuthToken) {
             result.success = false;
             result.message = HttpError[HttpError.EMPTY_BLUR_AUTH_TOKEN];

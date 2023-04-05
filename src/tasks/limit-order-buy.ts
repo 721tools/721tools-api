@@ -191,12 +191,12 @@ async function main(): Promise<void> {
 
 const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) => {
     await limiterQueue.removeTokens(1);
-
+    const blurAuthToken = "";
     const callDataResult = await getCalldata([{
         platform: 0,
         token_id: tokenId,
         price: price,
-    }], contractAddress);
+    }], contractAddress, blurAuthToken);
 
     if (!callDataResult.success) {
         return;
