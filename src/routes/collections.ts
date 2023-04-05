@@ -6,7 +6,6 @@ import _ from 'underscore';
 import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
-import { Flatform } from '../model/platform';
 import { parseTokenId } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
 import { setItemInfo, setOrderItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";

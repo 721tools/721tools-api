@@ -11,7 +11,7 @@ import { HttpError } from '../model/http-error';
 import { Flatform } from '../model/platform';
 import { OrderType } from '../model/order-type';
 import { parseTokenId, parseAddress } from "./binary_utils";
-import { decode } from "./blur_utils";
+import { decode, parseCalldata } from "./blur_utils";
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
 
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
@@ -72,6 +72,8 @@ export const getCalldata = async (tokens, contractAddress, ctx) => {
         result.message = HttpError[HttpError.TOO_MANY_TOKENS];
         return result;
     }
+    const tradeDetails = [];
+
     const blurTokens = tokens.filter(token => token.platform == Flatform.BLUR);
     if (blurTokens.length > 0) {
         if (!('blur_auth_token' in ctx.request.body)) {
@@ -130,8 +132,11 @@ export const getCalldata = async (tokens, contractAddress, ctx) => {
 
         const blurTxnData = blurResult.buys[0].txnData.data;
 
-        // @todo append to tx
+        const totalPrice = ethers.utils.parseEther(_.reduce(blurTokens, (memo: number, token: { price: number }) => memo + token.price, 0).toString());
 
+
+        tradeDetails.push({ marketId: 10, value: totalPrice, tradeData: parseCalldata(blurTxnData) });
+        result.value = result.value.add(totalPrice);
     }
 
     const openseaTokens = tokens.filter(token => token.platform == Flatform.OPENSEA);
@@ -211,7 +216,6 @@ export const getCalldata = async (tokens, contractAddress, ctx) => {
 
     const openseaIface = new ethers.utils.Interface(seaportProxyAbi)
 
-    const tradeDetails = [];
     if (orders.seaport.db.length > 0) {
         for (const order of orders.seaport.db) {
             const calldata = order.calldata;
