@@ -102,16 +102,6 @@ async function main(): Promise<void> {
                 }
             }
 
-            const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-            if (wethBalance < price) {
-                continue;
-            }
-
-            const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
-            if (wethAllowance < price) {
-                continue;
-            }
-
             const where = limitOrder.skip_flagged ? {
                 contract_address: collection.contract_address,
                 supports_wyvern: true,
@@ -127,6 +117,17 @@ async function main(): Promise<void> {
             if (!item) {
                 continue;
             }
+
+            const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
+            if (wethBalance < price) {
+                continue;
+            }
+
+            const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
+            if (wethAllowance < price) {
+                continue;
+            }
+
 
             // collection buy 
             if (_.isEmpty(limitOrder.traits)) {
