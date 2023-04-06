@@ -4,7 +4,6 @@ import _ from 'lodash';
 import fs from "fs";
 import path from "path";
 import Sequelize from 'sequelize';
-import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
 import { Orders, OrderBuyLogs } from '../dal/db';
 
@@ -20,7 +19,7 @@ import { getWethAddress } from '../helpers/opensea/erc20_utils';
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
-export const getOrders = async (openseaTokens, contractAddress) => {
+export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
     let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
     for (const openseaToken of openseaTokens) {
         url = url + "&token_ids=" + openseaToken.token_id;
@@ -176,7 +175,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
             }
         }
 
-        const openseaOrders = openseaLeftTokens.length > 0 ? await getOrders(openseaLeftTokens, contractAddress) : [];
+        const openseaOrders = openseaLeftTokens.length > 0 ? await getOpenseaOrders(openseaLeftTokens, contractAddress) : [];
 
         const ordersMap = _.groupBy(openseaOrders, function (item) {
             return item.maker_asset_bundle.assets[0].token_id;
@@ -310,20 +309,9 @@ export const getBasicOrderParametersFromOrder = (order) => {
     return basicOrderParameters;
 }
 
-const limiterFlexible = new RateLimiterMemory({
-    points: 1,
-    duration: 0.2,
-})
-const limiterQueue = new RateLimiterQueue(limiterFlexible);
-
-export const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) => {
-    await limiterQueue.removeTokens(1);
+export const buy = async (provider, user, limitOrder, contractAddress, tokens) => {
     const blurAuthToken = "";
-    const callDataResult = await getCalldata([{
-        platform: 0,
-        token_id: tokenId,
-        price: price,
-    }], contractAddress, user.address, blurAuthToken);
+    const callDataResult = await getCalldata(tokens, contractAddress, user.address, blurAuthToken);
 
     if (!callDataResult.success) {
         return;
@@ -334,7 +322,8 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokenId, 
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
 
-    const profit = price - currentPrice;
+    const totalPrice = _.reduce(tokens, (memo: number, token: { price: number }) => memo + token.price, 0);
+    const profit = totalPrice - currentPrice;
     if (profit <= 0.01) {
         return;
     }
@@ -347,7 +336,6 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokenId, 
     const feeData = await provider.getFeeData();
 
     const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
-
 
     if (totalGas > profit) {
         return;
@@ -366,7 +354,10 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokenId, 
 
     const calls = [];
     calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
-    calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, tokenId), 0]);
+
+    for (const token of tokens) {
+        calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, token.token_id), 0]);
+    }
 
     const wethIface = new utils.Interface([
         'function approve(address spender, uint256 amount) public returns (bool)',
@@ -384,13 +375,16 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokenId, 
     // 2: fillOrder
     // 3: Unwrap WETH
 
-    await OrderBuyLogs.create({
-        user_id: user.id,
-        contract_address: contractAddress,
-        order_id: limitOrder.id,
-        tx: tx.hash,
-        price: price,
-        status: BuyStatus[BuyStatus.RUNNING],
-    });
+    for (const token of tokens) {
+        await OrderBuyLogs.create({
+            user_id: user.id,
+            contract_address: contractAddress,
+            order_id: limitOrder.id,
+            tx: tx.hash,
+            price: token.price,
+            status: BuyStatus[BuyStatus.RUNNING],
+        });
+    }
+
 
 };

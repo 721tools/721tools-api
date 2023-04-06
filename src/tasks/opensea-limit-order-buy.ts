@@ -6,6 +6,7 @@ import { LimitOrders, OrderBuyLogs, User, OpenseaCollections, OpenseaItems } fro
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
+import { Flatform } from '../model/platform';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { buy } from "../helpers/order_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
@@ -127,7 +128,11 @@ async function main(): Promise<void> {
             if (wethAllowance < price) {
                 continue;
             }
-            await buy(provider, user, limitOrder, contractAddress, tokenId, price);
+            await buy(provider, user, limitOrder, contractAddress, [{
+                platform: Flatform.OPENSEA,
+                token_id: tokenId,
+                price: price,
+            }]);
             continue;
         }
 
