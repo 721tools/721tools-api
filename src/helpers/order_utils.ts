@@ -1,15 +1,18 @@
 import { gotScraping } from 'got-scraping';
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, ethers, utils } from "ethers";
 import _ from 'lodash';
 import fs from "fs";
 import path from "path";
 import Sequelize from 'sequelize';
+import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
-import { Orders } from '../dal/db';
+import { Orders, OrderBuyLogs } from '../dal/db';
+
 import { randomKey } from './opensea/key_utils';
 import { HttpError } from '../model/http-error';
 import { Flatform } from '../model/platform';
 import { OrderType } from '../model/order-type';
+import { BuyStatus } from '../model/buy-status';
 import { parseTokenId, parseAddress } from "./binary_utils";
 import { decode, parseCalldata } from "./blur_utils";
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
@@ -53,7 +56,7 @@ export const getOrders = async (openseaTokens, contractAddress) => {
 }
 
 
-export const getCalldata = async (tokens, contractAddress, blurAuthToken) => {
+export const getCalldata = async (tokens, contractAddress, userAddress, blurAuthToken) => {
     const result = {
         success: true,
         message: "",
@@ -94,12 +97,12 @@ export const getCalldata = async (tokens, contractAddress, blurAuthToken) => {
             url: `https://core-api.prod.blur.io/v1/buy/${contractAddress}`,
             body: JSON.stringify({
                 tokenPrices: tokenPrices,
-                userAddress: ctx.session.siwe.user.address
+                userAddress: userAddress
             }),
             method: 'POST',
             headers: {
                 'content-type': 'application/json',
-                'cookie': `authToken=${blurAuthToken}; walletAddress=${ctx.session.siwe.user.address}`,
+                'cookie': `authToken=${blurAuthToken}; walletAddress=${userAddress}`,
             },
         });
         if (response.statusCode != 200) {
@@ -306,3 +309,88 @@ export const getBasicOrderParametersFromOrder = (order) => {
     }
     return basicOrderParameters;
 }
+
+const limiterFlexible = new RateLimiterMemory({
+    points: 1,
+    duration: 0.2,
+})
+const limiterQueue = new RateLimiterQueue(limiterFlexible);
+
+export const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) => {
+    await limiterQueue.removeTokens(1);
+    const blurAuthToken = "";
+    const callDataResult = await getCalldata([{
+        platform: 0,
+        token_id: tokenId,
+        price: price,
+    }], contractAddress, user.address, blurAuthToken);
+
+    if (!callDataResult.success) {
+        return;
+    }
+    const data = callDataResult.calldata;
+
+    const totalValue = BigNumber.from(0).sub(callDataResult.value);
+
+    const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
+
+    const profit = price - currentPrice;
+    if (profit <= 0.01) {
+        return;
+    }
+
+    const gasLimit = await provider.estimateGas({
+        to: process.env.CONTRACT_ADDRESS,
+        data: data,
+        value: callDataResult.value
+    });
+    const feeData = await provider.getFeeData();
+
+    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
+
+
+    if (totalGas > profit) {
+        return;
+    }
+
+    if (totalGas > profit + 0.01) {
+        return;
+    }
+
+    const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
+    const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(signer.address)));
+    if (balance < (totalGas + currentPrice)) {
+        return;
+    }
+
+
+    const calls = [];
+    calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
+    calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, tokenId), 0]);
+
+    const wethIface = new utils.Interface([
+        'function approve(address spender, uint256 amount) public returns (bool)',
+        'function withdraw(uint256 wad) public'
+    ]);
+
+    const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit.toString())]);
+    calls.push([getWethAddress(), withdrawWethCalldata, 0]);
+
+    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
+    const tx = await contract.aggregate(calls, { value: totalValue });
+
+
+    // 1: batchBuyWithETH 
+    // 2: fillOrder
+    // 3: Unwrap WETH
+
+    await OrderBuyLogs.create({
+        user_id: user.id,
+        contract_address: contractAddress,
+        order_id: limitOrder.id,
+        tx: tx.hash,
+        price: price,
+        status: BuyStatus[BuyStatus.RUNNING],
+    });
+
+};

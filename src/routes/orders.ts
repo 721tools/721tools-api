@@ -63,7 +63,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
 
   const tokens = ctx.request.body['tokens'];
 
-  const result = await getCalldata(tokens, contract_address, ctx.request.body['blur_auth_token']);
+  const result = await getCalldata(tokens, contract_address, ctx.session.siwe.user.address, ctx.request.body['blur_auth_token']);
   if (!result.success) {
     ctx.status = 400;
 

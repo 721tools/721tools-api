@@ -1,27 +1,16 @@
 import Sequelize from 'sequelize';
-import { BigNumber, ethers, utils } from "ethers";
+import { ethers } from "ethers";
 import _ from 'underscore';
-import fs from "fs";
-import path from "path";
-import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
 
 import { LimitOrders, OrderBuyLogs, User, OpenseaCollections, OpenseaItems } from '../dal/db';
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
-import { getCalldata, getFillOrderCalldata } from "../helpers/order_utils";
-import { getContractWethAllowance, getWethBalance, getWethAddress } from '../helpers/opensea/erc20_utils';
+import { buy } from "../helpers/order_utils";
+import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 
 import { redis } from '../dal/mq';
-
-const limiterFlexible = new RateLimiterMemory({
-    points: 1,
-    duration: 0.2,
-})
-const limiterQueue = new RateLimiterQueue(limiterFlexible);
-
-const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
 
 async function main(): Promise<void> {
@@ -188,85 +177,6 @@ async function main(): Promise<void> {
     });
 }
 
-
-const buy = async (provider, user, limitOrder, contractAddress, tokenId, price) => {
-    await limiterQueue.removeTokens(1);
-    const blurAuthToken = "";
-    const callDataResult = await getCalldata([{
-        platform: 0,
-        token_id: tokenId,
-        price: price,
-    }], contractAddress, blurAuthToken);
-
-    if (!callDataResult.success) {
-        return;
-    }
-    const data = callDataResult.calldata;
-
-    const totalValue = BigNumber.from(0).sub(callDataResult.value);
-
-    const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
-
-    const profit = price - currentPrice;
-    if (profit <= 0.01) {
-        return;
-    }
-
-    const gasLimit = await provider.estimateGas({
-        to: process.env.CONTRACT_ADDRESS,
-        data: data,
-        value: callDataResult.value
-    });
-    const feeData = await provider.getFeeData();
-
-    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
-
-
-    if (totalGas > profit) {
-        return;
-    }
-
-    if (totalGas > profit + 0.01) {
-        return;
-    }
-
-    const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
-    const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(signer.address)));
-    if (balance < (totalGas + currentPrice)) {
-        return;
-    }
-
-
-    const calls = [];
-    calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
-    calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, tokenId), 0]);
-
-    const wethIface = new utils.Interface([
-        'function approve(address spender, uint256 amount) public returns (bool)',
-        'function withdraw(uint256 wad) public'
-    ]);
-
-    const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit)]);
-    calls.push([getWethAddress(), withdrawWethCalldata, 0]);
-
-    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
-    const tx = await contract.aggregate(calls, { value: totalValue });
-
-
-    // 1: batchBuyWithETH 
-    // 2: fillOrder
-    // 3: Unwrap WETH
-
-    await OrderBuyLogs.create({
-        user_id: user.id,
-        contract_address: contractAddress,
-        order_id: limitOrder.id,
-        tx: tx.hash,
-        price: price,
-        status: BuyStatus[BuyStatus.RUNNING],
-    });
-
-};
 
 main();
 
