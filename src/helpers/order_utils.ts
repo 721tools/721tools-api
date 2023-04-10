@@ -309,8 +309,7 @@ export const getBasicOrderParametersFromOrder = (order) => {
     return basicOrderParameters;
 }
 
-export const buy = async (provider, user, limitOrder, contractAddress, tokens) => {
-    const blurAuthToken = "";
+export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
     const callDataResult = await getCalldata(tokens, contractAddress, user.address, blurAuthToken);
 
     if (!callDataResult.success) {

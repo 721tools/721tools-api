@@ -9,6 +9,7 @@ import { UserType } from '../model/user-type';
 import { OrderType } from '../model/order-type';
 import { Flatform } from '../model/platform';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
+import { getAuthToken } from "../helpers/blur_utils";
 import { buy } from "../helpers/order_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 
@@ -128,7 +129,7 @@ async function main(): Promise<void> {
                 price: item.price,
             }
         });
-        await buy(provider, user, limitOrder, limitOrder.contract_address, tokens);
+        await buy(provider, user, limitOrder, limitOrder.contract_address, tokens, await getAuthToken());
         continue;
     }
 }

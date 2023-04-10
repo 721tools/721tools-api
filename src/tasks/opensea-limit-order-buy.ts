@@ -132,7 +132,7 @@ async function main(): Promise<void> {
                 platform: Flatform.OPENSEA,
                 token_id: tokenId,
                 price: price,
-            }]);
+            }], "");
             continue;
         }
 
