@@ -165,7 +165,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         if (ordersInDb.length > 0) {
             for (const order of ordersInDb) {
                 const tokenId = parseInt(order.token_id.toString("hex"), 16);
-                orders.seaport.db.push({ price: order.price, token_id: tokenId, calldata: order.calldata });
+                orders.seaport.db.push({ price: ethers.utils.parseUnits(order.price, "ether"), token_id: tokenId, calldata: order.calldata });
 
                 for (const index in openseaLeftTokens) {
                     if (openseaLeftTokens[index].token_id == tokenId) {
@@ -193,7 +193,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
                 missingTokens.push(openseaToken.token_id);
                 continue;
             }
-            const current_price = parseFloat(ethers.utils.formatUnits(order.current_price, 'ether'));
+            const current_price = parseFloat(ethers.utils.formatEther(order.current_price));
             if (current_price > openseaToken.price) {
                 missingTokens.push(openseaToken.token_id);
                 continue;
@@ -214,7 +214,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
     if (orders.seaport.db.length > 0) {
         for (const order of orders.seaport.db) {
             const calldata = order.calldata;
-            const orderValue = ethers.utils.formatEther(order.price);
+            const orderValue = ethers.utils.parseUnits(order.price, "ether");
             tradeDetails.push({ marketId: 10, value: orderValue, tradeData: calldata });
             result.value = result.value.add(BigNumber.from(orderValue));
         }
@@ -249,7 +249,7 @@ export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
     const calldata = openseaIface.encodeFunctionData("fillOrder", [
         [
             address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), 1,
-            parseFloat(ethers.utils.formatUnits(limitOrder.price, 'ether')),
+            ethers.utils.parseUnits(limitOrder.price, "ether"),
             limitOrder.expiration_time.getTime(),
             limitOrder.token_ids,
             limitOrder.salt
