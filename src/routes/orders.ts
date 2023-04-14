@@ -81,7 +81,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
-  ctx.body = { value: result.value, calldata: result.calldata };
+  ctx.body = { value: result.value.toString(), calldata: result.calldata, address: process.env.CONTRACT_ADDRESS };
 });
 
 OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
