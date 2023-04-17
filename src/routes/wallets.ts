@@ -3,6 +3,11 @@ import { ethers } from "ethers";
 import axios from 'axios';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
+<<<<<<< HEAD
+=======
+import { gotScraping } from 'got-scraping';
+import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
+>>>>>>> main
 
 import { OpenseaCollections, OpenseaItems } from '../dal/db';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
@@ -17,6 +22,65 @@ import { getNumberQueryParam } from "../helpers/param_utils";
 const WalletsRouter = new Router({});
 const Op = Sequelize.Op;
 
+<<<<<<< HEAD
+=======
+const limiterFlexible = new RateLimiterMemory({
+  points: 1,
+  duration: 0.2,
+})
+const limiterQueue = new RateLimiterQueue(limiterFlexible);
+
+const fetchItemsByOwner = async (owner: any, cursor: any) => {
+  await limiterQueue.removeTokens(1);
+  const url = `https://api.opensea.io/api/v1/assets?limit=200&owner=${owner}&order_direction=desc${cursor ? `&cursor=${cursor}` : ""}`;
+  const response = await gotScraping({
+    url: url,
+    context: {
+      proxyUrl: process.env.PROXY,
+    },
+    headers: {
+      'content-type': 'application/json',
+    },
+  });
+  return JSON.parse(response.body);
+}
+
+const parseTokenId = (tokenId) => {
+  let hex = parseInt(tokenId).toString(16);
+  if (hex.length % 2 == 1) {
+    hex = '0' + hex;
+  }
+  return Buffer.from(hex, 'hex');
+};
+
+const fetchNFTs = async (owner: any) => {
+  let cursor = null;
+  let hasNextPage = true;
+  let items = [];
+  while (hasNextPage) {
+    const data = await fetchItemsByOwner(owner, cursor);
+    if (data.previous) {
+      cursor = data.previous;
+    } else {
+      hasNextPage = false;
+    }
+    Array.prototype.push.apply(items, _.map(data.assets.reverse(), (item) => ({
+      token_id: item.token_id,
+      slug: item.collection.slug,
+      name: item.name ? item.name : `${item.collection.name} #${item.token_id}`,
+      schema: item.asset_contract.schema_name,
+      contract: item.asset_contract.address,
+      total_supply: item.asset_contract.total_supply,
+      image: item.image_url ? item.image_url : "",
+      floor_price: 0,
+      last_price: item.last_sale ? parseFloat(parseFloat(ethers.utils.formatUnits(item.last_sale.total_price, 'ether')).toFixed(4)) : 0,
+      rank: 0
+    })));
+  }
+  return items;
+}
+
+>>>>>>> main
 const setFloorPrice = async (nfts) => {
   if (nfts && nfts.length > 0) {
     const contractAddresses = [...new Set(nfts.map(item => parseAddress(item.token_address)))];
