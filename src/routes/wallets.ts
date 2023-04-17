@@ -3,11 +3,8 @@ import { ethers } from "ethers";
 import axios from 'axios';
 import _ from 'underscore';
 import Sequelize from 'sequelize';
-<<<<<<< HEAD
-=======
 import { gotScraping } from 'got-scraping';
 import { RateLimiterMemory, RateLimiterQueue } from 'rate-limiter-flexible';
->>>>>>> main
 
 import { OpenseaCollections, OpenseaItems } from '../dal/db';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
@@ -22,8 +19,6 @@ import { getNumberQueryParam } from "../helpers/param_utils";
 const WalletsRouter = new Router({});
 const Op = Sequelize.Op;
 
-<<<<<<< HEAD
-=======
 const limiterFlexible = new RateLimiterMemory({
   points: 1,
   duration: 0.2,
@@ -45,13 +40,6 @@ const fetchItemsByOwner = async (owner: any, cursor: any) => {
   return JSON.parse(response.body);
 }
 
-const parseTokenId = (tokenId) => {
-  let hex = parseInt(tokenId).toString(16);
-  if (hex.length % 2 == 1) {
-    hex = '0' + hex;
-  }
-  return Buffer.from(hex, 'hex');
-};
 
 const fetchNFTs = async (owner: any) => {
   let cursor = null;
@@ -80,7 +68,6 @@ const fetchNFTs = async (owner: any) => {
   return items;
 }
 
->>>>>>> main
 const setFloorPrice = async (nfts) => {
   if (nfts && nfts.length > 0) {
     const contractAddresses = [...new Set(nfts.map(item => parseAddress(item.token_address)))];
