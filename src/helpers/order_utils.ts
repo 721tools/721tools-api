@@ -155,10 +155,10 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
 
     if (openseaTokens.length > 0) {
         let openseaTokenFilters = [];
-        for (const token of tokens) {
+        for (const token of openseaTokens) {
             openseaTokenFilters.push({
                 token_id: parseTokenId(token.token_id),
-                price: { [Sequelize.Op.lte]: token.price }
+                price: { [Sequelize.Op.lte]: parseFloat(token.price.toString()) }
             });
         }
         const ordersInDb = await Orders.findAll({
