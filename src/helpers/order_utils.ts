@@ -34,7 +34,7 @@ export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
             url: requestUrl,
             headers: {
                 'content-type': 'application/json',
-                'X-API-KEY': key
+                'X-API-KEY': process.env.NETWORK === 'goerli' ? "" : key
             },
         });
         if (response.statusCode != 200) {
@@ -50,6 +50,17 @@ export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
         if (orders.length > 0) {
             allOrders = allOrders.concat(orders);
         }
+    }
+    if (allOrders.length > 0) {
+        const result = [];
+        for (const order of allOrders) {
+            const params = await getBasicOrderParametersFromOrder(order, key);
+            if (!params) {
+                return [];
+            }
+            result.push(params);
+        }
+        return result;
     }
     return allOrders;
 }
@@ -174,9 +185,14 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         }
 
         const openseaOrders = openseaLeftTokens.length > 0 ? await getOpenseaOrders(openseaLeftTokens, contractAddress) : [];
-
+        if (openseaOrders.length == 0) {
+            result.success = false;
+            result.message = HttpError[HttpError.ORDER_EXPIRED];
+            result.missing_tokens = _.map(openseaLeftTokens, (item) => item.token_id);
+            return result;
+        }
         const ordersMap = _.groupBy(openseaOrders, function (item) {
-            return item.maker_asset_bundle.assets[0].token_id;
+            return item.offerIdentifier;
         });
         for (const openseaToken of openseaLeftTokens) {
             if (!(openseaToken.token_id in ordersMap)) {
@@ -185,13 +201,13 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
             }
 
             const order = ordersMap[openseaToken.token_id][0];
-            const orderAssetContract = order.taker_asset_bundle.assets[0].asset_contract.address;
-            const orderAssetsymbol = order.taker_asset_bundle.assets[0].asset_contract.symbol;
-            if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || orderAssetsymbol !== "ETH") {
+            const orderAssetContract = order.considerationToken;
+            const considerationIdentifier = order.considerationIdentifier;
+            if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || considerationIdentifier !== "0") {
                 missingTokens.push(openseaToken.token_id);
                 continue;
             }
-            const current_price = parseFloat(ethers.utils.formatEther(order.current_price));
+            const current_price = parseFloat(ethers.utils.formatEther(order.considerationAmount));
             if (current_price > openseaToken.price) {
                 missingTokens.push(openseaToken.token_id);
                 continue;
@@ -219,16 +235,14 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
     }
     if (orders.seaport.remote.length > 0) {
         for (const order of orders.seaport.remote) {
-            const basicOrderParameters = getBasicOrderParametersFromOrder(order);
-            const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[basicOrderParameters]]);
-            tradeDetails.push({ marketId: 10, value: order.current_price, tradeData: calldata });
-            result.value = result.value.add(BigNumber.from(order.current_price));
+            const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[order]]);
+            tradeDetails.push({ marketId: 10, value: order.considerationAmount, tradeData: calldata });
+            result.value = result.value.add(BigNumber.from(order.considerationAmount));
         }
     }
 
     let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [tradeDetails]);
-
     result.calldata = data;
     return result;
 }
@@ -259,53 +273,34 @@ export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
 
 
 
-export const getBasicOrderParametersFromOrder = (order) => {
-    const basicOrderParameters = {
-        considerationToken: '0x0000000000000000000000000000000000000000',
-        considerationIdentifier: 0,
-        considerationAmount: undefined,
-        offerer: undefined,
-        zone: undefined,
-        offerToken: undefined,
-        offerIdentifier: undefined,
-        offerAmount: 1,
-        basicOrderType: 2,
-        startTime: undefined,
-        endTime: undefined,
-        zoneHash: undefined,
-        salt: undefined,
-        offererConduitKey: undefined,
-        fulfillerConduitKey: undefined,
-        totalOriginalAdditionalRecipients: undefined,
-        additionalRecipients: [],
-        signature: undefined
-    }
-    basicOrderParameters.offerer = ethers.utils.getAddress(order.maker.address);
-    basicOrderParameters.zone = order.protocol_data.parameters.zone;
-    basicOrderParameters.offerToken = order.protocol_data.parameters.offer[0].token;
-    basicOrderParameters.offerIdentifier = order.protocol_data.parameters.offer[0].identifierOrCriteria;
-    basicOrderParameters.startTime = order.listing_time;
-    basicOrderParameters.endTime = order.expiration_time;
-    basicOrderParameters.basicOrderType = order.protocol_data.parameters.orderType;
-    basicOrderParameters.zoneHash = order.protocol_data.parameters.zoneHash;
-    basicOrderParameters.salt = order.protocol_data.parameters.salt;
-    basicOrderParameters.offererConduitKey = order.protocol_data.parameters.conduitKey;
-    basicOrderParameters.fulfillerConduitKey = order.protocol_data.parameters.conduitKey;
-    basicOrderParameters.totalOriginalAdditionalRecipients = order.protocol_data.parameters.totalOriginalConsiderationItems - 1
-    basicOrderParameters.signature = order.protocol_data.signature;
-    for (const consider of order.protocol_data.parameters.consideration) {
-        if (consider.recipient === basicOrderParameters.offerer) {
-            basicOrderParameters.considerationAmount = consider.startAmount;
-            continue;
+export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
+    const request = {
+        listing: {
+            hash: order.order_hash,
+            chain: order.maker_asset_bundle.assets[0].asset_contract.chain_identifier,
+            protocol_address: order.protocol_address,
+        },
+        fulfiller: {
+            address: process.env.CONTRACT_ADDRESS
         }
-
-        basicOrderParameters.additionalRecipients.push({
-            amount: consider.startAmount,
-            recipient: consider.recipient
-        });
+    };
+    const response = await gotScraping({
+        url: `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/listings/fulfillment_data`,
+        method: 'POST',
+        body: JSON.stringify(request),
+        headers: {
+            'content-type': 'application/json',
+            'X-API-KEY': process.env.NETWORK === 'goerli' ? "" : openseaKey
+        },
+    });
+    if (response.statusCode != 200) {
+        console.log(`Fullfile order, failed, listing:${JSON.stringify(request.listing)}, response: ${response.body}`);
+        return null;
     }
-    return basicOrderParameters;
+    const responseBody = JSON.parse(response.body);
+    return responseBody.fulfillment_data.transaction.input_data.parameters;
 }
+
 
 export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
     const callDataResult = await getCalldata(tokens, contractAddress, user.address, blurAuthToken);
