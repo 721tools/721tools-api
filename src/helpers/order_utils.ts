@@ -228,9 +228,8 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
     if (orders.seaport.db.length > 0) {
         for (const order of orders.seaport.db) {
             const calldata = order.calldata;
-            const orderValue = ethers.utils.parseUnits(order.price.toString(), "ether");
-            tradeDetails.push({ marketId: 10, value: orderValue, tradeData: calldata });
-            result.value = result.value.add(BigNumber.from(orderValue));
+            tradeDetails.push({ marketId: 10, value: order.price, tradeData: calldata });
+            result.value = result.value.add(order.price);
         }
     }
     if (orders.seaport.remote.length > 0) {
