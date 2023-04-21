@@ -81,13 +81,13 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         if (!blurAuthToken) {
             result.success = false;
             result.message = HttpError[HttpError.EMPTY_BLUR_AUTH_TOKEN];
-            return;
+            return result;
         }
         const tokenPrices = _.map(blurTokens, (item) => {
             return {
-                tokenId: item.token_id,
+                tokenId: item.token_id.toString(),
                 price: {
-                    amount: item.price,
+                    amount: item.price.toString(),
                     unit: "ETH"
                 }
             }
@@ -104,18 +104,18 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
                 'cookie': `authToken=${blurAuthToken}; walletAddress=${userAddress}`,
             },
         });
-        if (response.statusCode != 200) {
+        if (response.statusCode != 201) {
             result.success = false;
             result.message = HttpError[HttpError.GET_BLUR_CALLDATA_ERROR];
             console.log(`Get blur calldata failed, tokens:${JSON.stringify(tokenPrices)}, response: ${response.body}`);
-            return;
+            return result;
         }
         const responseBody = JSON.parse(response.body);
         if (!responseBody.success) {
             console.log(`Get blur calldata failed, tokens:${JSON.stringify(tokenPrices)}, response: ${response.body}`);
             result.success = false;
             result.message = HttpError[HttpError.GET_BLUR_CALLDATA_ERROR];
-            return;
+            return result;
         }
         const blurResult = JSON.parse(decode(responseBody.data));
         if (blurResult.cancelReasons && blurResult.cancelReasons.length > 0) {
@@ -126,9 +126,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         }
 
         const blurTxnData = blurResult.buys[0].txnData.data;
-
         const totalPrice = ethers.utils.parseEther(_.reduce(blurTokens, (memo: number, token: { price: number }) => memo + token.price, 0).toString());
-
 
         tradeDetails.push({ marketId: 10, value: totalPrice, tradeData: parseCalldata(blurTxnData) });
         result.value = result.value.add(totalPrice);
