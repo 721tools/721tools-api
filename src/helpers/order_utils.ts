@@ -177,7 +177,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
                 orders.seaport.db.push({ price: ethers.utils.parseUnits(order.price.toString(), "ether"), token_id: tokenId, calldata: order.calldata });
 
                 for (const index in openseaLeftTokens) {
-                    if (openseaLeftTokens[index].token_id == tokenId) {
+                    if (openseaLeftTokens[index].token_id.toString() == tokenId.toString()) {
                         openseaLeftTokens.splice(index);
                     }
                 }
@@ -188,28 +188,31 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         if (openseaOrders.length == 0) {
             result.success = false;
             result.message = HttpError[HttpError.ORDER_EXPIRED];
-            result.missing_tokens = _.map(openseaLeftTokens, (item) => item.token_id);
+            result.missing_tokens = _.map(openseaLeftTokens, (item) => item.token_id.toString());
             return result;
         }
         const ordersMap = _.groupBy(openseaOrders, function (item) {
             return item.offerIdentifier;
         });
         for (const openseaToken of openseaLeftTokens) {
-            if (!(openseaToken.token_id in ordersMap)) {
-                missingTokens.push(openseaToken.token_id)
+            if (!(openseaToken.token_id.toString() in ordersMap)) {
+                missingTokens.push(openseaToken.token_id.toString())
                 continue;
             }
 
-            const order = ordersMap[openseaToken.token_id][0];
+            const order = ordersMap[openseaToken.token_id.toString()][0];
             const orderAssetContract = order.considerationToken;
             const considerationIdentifier = order.considerationIdentifier;
             if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || considerationIdentifier !== "0") {
-                missingTokens.push(openseaToken.token_id);
+                missingTokens.push(openseaToken.token_id.toString());
                 continue;
             }
-            const current_price = parseFloat(ethers.utils.formatEther(order.considerationAmount));
-            if (current_price > openseaToken.price) {
-                missingTokens.push(openseaToken.token_id);
+            let currentPrice = BigNumber.from(order.considerationAmount);
+            for (const additionalRecipient of order.additionalRecipients) {
+                currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
+            }
+            if (currentPrice.gt(ethers.utils.parseEther(openseaToken.price.toString()))) {
+                missingTokens.push(openseaToken.token_id.toString());
                 continue;
             }
 
@@ -235,8 +238,12 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
     if (orders.seaport.remote.length > 0) {
         for (const order of orders.seaport.remote) {
             const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[order]]);
-            tradeDetails.push({ marketId: 10, value: order.considerationAmount, tradeData: calldata });
-            result.value = result.value.add(BigNumber.from(order.considerationAmount));
+            let currentPrice = BigNumber.from(order.considerationAmount);
+            for (const additionalRecipient of order.additionalRecipients) {
+                currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
+            }
+            tradeDetails.push({ marketId: 10, value: currentPrice, tradeData: calldata });
+            result.value = result.value.add(currentPrice);
         }
     }
 
