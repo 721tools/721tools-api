@@ -70,6 +70,7 @@ CollectionsRouter.get('/', async (ctx) => {
     criteria['slug'] = slugs;
   }
 
+  criteria['schema'] = ['ERC721', 'CRYPTOPUNKS'];
   let order_by = "";
   if ('order_by' in ctx.request.query) {
     order_by = ctx.request.query['order_by'];
