@@ -19,7 +19,7 @@ const clickhouse = new ClickHouse({
         session_timeout: 60,
         output_format_json_quote_64bit_integers: 0,
         enable_http_compression: 0,
-        database: '721_nft_assets',
+        database: process.env.CLICKHOUSE_DATABASE,
     },
 });
 
