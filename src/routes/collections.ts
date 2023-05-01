@@ -278,8 +278,6 @@ CollectionsRouter.get('/:slug', async (ctx) => {
   }
 });
 
-
-
 CollectionsRouter.post('/:slug/events', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
@@ -468,6 +466,106 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
   ctx.body = events;
 });
 
+
+CollectionsRouter.post('/:slug/listings', async (ctx) => {
+  let slug = ctx.params.slug;
+  if (!slug) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.NO_COLLECTION_FOUND]
+    }
+    return;
+  }
+
+  let criteria = {};
+  if (slug.lastIndexOf("0x") === 0 && ethers.utils.isAddress(slug)) {
+    criteria = {
+      contract_address: Buffer.from(slug.slice(2), 'hex')
+    }
+  } else {
+    criteria = {
+      slug: slug
+    }
+  }
+  const collection = await OpenseaCollections.findOne({
+    where: criteria
+  });
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  let occurred_after = getNumberParam('occurred_after', ctx);
+  if (occurred_after <= 0) {
+    occurred_after = 0;
+  }
+  let limit = getNumberParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 20;
+  }
+  if (limit > 100) {
+    limit = 100
+  }
+  const traits = ctx.request.body['traits'];
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  if (items && items.length == 0) {
+    return [];
+  }
+  const where = {
+    contract_address: collection.contract_address,
+    status: 1,
+    type: OrderType.AUCTION_CREATED,
+    order_expiration_date: {
+      [Sequelize.Op.gt]: new Date()
+    },
+    order: [
+      ["id", "DESC"]
+    ],
+    limit: 100,
+  };
+
+  if (occurred_after > 0) {
+    where['order_event_timestamp'] = { [Sequelize.Op.gt]: new Date(occurred_after) }
+  }
+
+  if (items != null && items.length > 0) {
+    const tokenIds = _.map(items, (item) => item.token_id);
+    where['token_id'] = tokenIds;
+  }
+
+  const orders = await Orders.findAll({
+    where: where,
+    order: [
+      ["id", "DESC"]
+    ],
+    limit: 20,
+  });
+
+  const results = [];
+  if (orders.length > 0) {
+    Array.prototype.push.apply(results, _.map(orders, (item) => ({
+      token_id: parseInt(item.token_id.toString("hex"), 16),
+      price: item.price,
+      from: item.from,
+      owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
+      event_timestamp: item.order_event_timestamp.getTime(),
+      quantity: item.quantity,
+      trait_type: item.trait_type,
+      trait_name: item.trait_name,
+    })));
+  }
+
+  if (items) {
+    await setOrderItemInfo(orders, items, collection);
+  } else {
+    await setItemInfo(orders, collection);
+  }
+  ctx.body = items;
+});
 
 CollectionsRouter.get('/:slug/sales', async (ctx) => {
   let slug = ctx.params.slug;
