@@ -567,7 +567,7 @@ CollectionsRouter.post('/:slug/listings', async (ctx) => {
   ctx.body = items;
 });
 
-CollectionsRouter.get('/:slug/sales', async (ctx) => {
+CollectionsRouter.post('/:slug/sales', async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
     ctx.status = 404;
@@ -598,11 +598,23 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
     return;
   }
 
-  let start_time = getNumberQueryParam('start_time', ctx);
-  if (start_time <= 0) {
-    start_time = new Date().getTime() - 7 * 24 * 3600 * 1000;
+  let occurred_after = getNumberParam('occurred_after', ctx);
+  if (occurred_after <= 0) {
+    occurred_after = 0;
   }
-  start_time = Math.floor(start_time / 1000);
+  let limit = getNumberParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 20;
+  }
+  if (limit > 100) {
+    limit = 100
+  }
+  const traits = ctx.request.body['traits'];
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  if (items && items.length == 0) {
+    return [];
+  }
 
   let end_time = getNumberQueryParam('end_time', ctx);
   if (end_time <= 0) {
@@ -612,30 +624,38 @@ CollectionsRouter.get('/:slug/sales', async (ctx) => {
   end_time = Math.floor(end_time / 1000);
 
   const contract_address = "0x" + Buffer.from(collection.contract_address, 'binary').toString('hex');
-  const query = `select * from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${start_time})  and timestamp < FROM_UNIXTIME(${end_time})`;
-
-  const rows = await clickhouse.query(query).toPromise();
-  const items = rows.map(item => {
-    return {
-      token_id: item.tokenId,
-      plateform: item.plateform,
-      is_bundle: item.isBundle,
-      buyer: item.buyer,
-      seller: item.seller,
-      amount: item.amount,
-      price_eth: parseFloat(ethers.utils.formatUnits(item.priceETH, 'ether')),
-      direction: item.direction,
-      tx_hash: item.tx_hash,
+  let query = `select * from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${Math.floor(occurred_after / 1000)})  and timestamp < FROM_UNIXTIME(${end_time})`
+  if (items != null && items.length > 0) {
+    const tokenIds = _.map(items, (item) => item.token_id);
+    query += ` and tokenId in (${tokenIds.join(', ')})`;
+  }
+  query += ` order by height desc, logIndex desc limit ${limit}`
+  const nftTrades = await clickhouse.query(query).toPromise();
+  let results = [];
+  if (nftTrades.length > 0) {
+    Array.prototype.push.apply(results, _.map(nftTrades, (item) => ({
+      token_id: parseInt(item.tokenId),
+      price: parseFloat(ethers.utils.formatUnits(item.priceETH, 'ether')),
+      from: item.plateform,
+      owner_address: item.seller,
+      to: item.buyer,
       height: item.height,
-      timestamp: new Date(item.timestamp).getTime(),
-      image: "",
-      rank: 0
+      logIndex: item.logIndex,
+      tx_hash: item.tx_hash,
+      event_timestamp: item.timestamp.getTime(),
+      quantity: item.amount,
+      trait_type: item.trait_type,
+      trait_name: item.trait_name,
+    })));
+    if (items) {
+      await setOrderItemInfo(orders, items, collection);
+    } else {
+      await setItemInfo(orders, collection);
     }
-  });
-
-  await setItemInfo(items, collection);
+  }
   ctx.body = items;
 });
+
 
 CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
   let slug = ctx.params.slug;
