@@ -539,7 +539,11 @@ CollectionsRouter.post('/:slug/listings', async (ctx) => {
     limit: 100,
   });
 
-  await setOrderItemInfo(orders, items, collection);
+  if (items) {
+    await setOrderItemInfo(orders, items, collection);
+  } else {
+    await setItemInfo(orders, collection);
+  }
   ctx.body = _.map(orders, (item) => ({
     token_id: parseInt(item.token_id.toString("hex"), 16),
     price: item.price,
