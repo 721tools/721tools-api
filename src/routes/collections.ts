@@ -380,12 +380,10 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
         token_id: parseInt(item.token_id.toString("hex"), 16),
         price: item.price,
         from: item.from,
-        owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
+        owner_address: item.owner_address ? '0x' + Buffer.from(item.owner_address, 'binary').toString('hex') : "",
         event_timestamp: item.order_event_timestamp.getTime(),
         event_type: OrderType[item.type],
         quantity: item.quantity,
-        trait_type: item.trait_type,
-        trait_name: item.trait_name,
       })));
     }
   }
@@ -522,10 +520,6 @@ CollectionsRouter.post('/:slug/listings', async (ctx) => {
     order_expiration_date: {
       [Sequelize.Op.gt]: new Date()
     },
-    order: [
-      ["id", "DESC"]
-    ],
-    limit: 100,
   };
 
   if (occurred_after > 0) {
@@ -540,31 +534,24 @@ CollectionsRouter.post('/:slug/listings', async (ctx) => {
   const orders = await Orders.findAll({
     where: where,
     order: [
-      ["id", "DESC"]
+      ["order_event_timestamp", "DESC"]
     ],
-    limit: 20,
+    limit: 100,
   });
 
-  const results = [];
-  if (orders.length > 0) {
-    Array.prototype.push.apply(results, _.map(orders, (item) => ({
-      token_id: parseInt(item.token_id.toString("hex"), 16),
-      price: item.price,
-      from: item.from,
-      owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
-      event_timestamp: item.order_event_timestamp.getTime(),
-      quantity: item.quantity,
-      trait_type: item.trait_type,
-      trait_name: item.trait_name,
-    })));
-  }
-
-  if (items) {
-    await setOrderItemInfo(orders, items, collection);
-  } else {
-    await setItemInfo(orders, collection);
-  }
-  ctx.body = items;
+  await setOrderItemInfo(orders, items, collection);
+  ctx.body = _.map(orders, (item) => ({
+    token_id: parseInt(item.token_id.toString("hex"), 16),
+    price: item.price,
+    from: item.from,
+    owner_address: item.owner_address ? '0x' + Buffer.from(item.owner_address, 'binary').toString('hex') : "",
+    event_timestamp: item.order_event_timestamp.getTime(),
+    quantity: item.quantity,
+    name: item.name,
+    image: item.image,
+    rank: item.rank,
+    supports_wyvern: item.supports_wyvern,
+  }));
 });
 
 CollectionsRouter.post('/:slug/sales', async (ctx) => {
@@ -644,16 +631,14 @@ CollectionsRouter.post('/:slug/sales', async (ctx) => {
       tx_hash: item.tx_hash,
       event_timestamp: item.timestamp.getTime(),
       quantity: item.amount,
-      trait_type: item.trait_type,
-      trait_name: item.trait_name,
     })));
     if (items) {
-      await setOrderItemInfo(orders, items, collection);
+      await setOrderItemInfo(results, items, collection);
     } else {
-      await setItemInfo(orders, collection);
+      await setItemInfo(results, collection);
     }
   }
-  ctx.body = items;
+  ctx.body = results;
 });
 
 
@@ -777,7 +762,7 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
       price: item.price,
       from: item.from,
       quantity: item.quantity > 0 ? item.quantity : 1,
-      owner_address: item.owner_address ? "" : '0x' + Buffer.from(item.owner_address, 'binary').toString('hex'),
+      owner_address: item.owner_address ? '0x' + Buffer.from(item.owner_address, 'binary').toString('hex') : "",
       rank: item.rank,
       image: item.image,
       name: item.name,

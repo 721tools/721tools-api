@@ -44,7 +44,10 @@ export const setItemInfo = async (items, collection) => {
 };
 
 export const setOrderItemInfo = async (orders, items, collection) => {
-    const itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
+    let itemMap = new Map<string, typeof OpenseaItems>();
+    if (items && items.length > 0) {
+        itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
+    }
     for (let index in orders) {
         const nft = orders[index];
         const tokenId = parseInt(nft.token_id.toString("hex"), 16).toString();
