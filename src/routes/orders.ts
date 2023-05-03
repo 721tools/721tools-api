@@ -174,7 +174,7 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
   }
 
 
-  const traits = ctx.request.body['traits']
+  const traits = ctx.request.body['traits'];
   let items = await getItemsByTraits(collection, traits);
   let tokenIds = [];
   if (_.isEmpty(traits)) {
@@ -209,7 +209,7 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
     nonce: nonce.toNumber(),
     token: getWethAddress(),
     amount: amount,
-    price: ethers.utils.parseEther(price.toString()),
+    price: ethers.utils.parseEther(price.toString()).toString(),
     expiresAt: expiration,
     tokenIds: tokenIds,
     salt: salt,
@@ -237,7 +237,7 @@ OrdersRouter.get('/:id/params', requireLogin, requireWhitelist, async (ctx) => {
     nonce: limitOrder.nonce,
     token: getWethAddress(),
     amount: limitOrder.amount,
-    price: ethers.utils.parseEther(limitOrder.price.toString()),
+    price: ethers.utils.parseEther(limitOrder.price.toString()).toString(),
     expiresAt: limitOrder.expiration_time.getTime(),
     tokenIds: limitOrder.tokenIds,
     salt: limitOrder.salt,
