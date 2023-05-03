@@ -353,7 +353,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
       nonce: nonce,
       token: getWethAddress(),
       amount: amount,
-      price: ethers.utils.parseEther(price.toString()),
+      price: ethers.utils.parseEther(price.toString()).toString(),
       expiresAt: expiration,
       tokenIds: tokenIds,
       salt: salt,
@@ -372,12 +372,14 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
         { name: "nonce", type: "uint256" },
         { name: "token", type: "address" },
         { name: "amount", type: "uint256" },
+        { name: 'price', type: 'uint256' },
         { name: "expiresAt", type: "uint256" },
         { name: "tokenIds", type: "uint256[]" },
         { name: "salt", type: "string" },
       ],
     },
   });
+
   const restored = recoverTypedSignature({
     data: JSON.parse(msgParams),
     signature: signature,
@@ -387,9 +389,8 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   if (ethers.utils.getAddress(restored) !== ethers.utils.getAddress(user.address)) {
     ctx.status = 400;
     ctx.body = {
-      error: HttpError[HttpError.NOT_VALID_EXPIRATION]
+      error: HttpError[HttpError.SIGNATURE_ERROR]
     }
-    ctx.body = {}
     return;
   }
 

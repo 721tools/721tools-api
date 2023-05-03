@@ -87,7 +87,7 @@ CREATE TABLE `limit_orders` (
   `token_ids` JSON,
   `nonce` int NOT NULL DEFAULT 0,
   `salt` varchar(128) NOT NULL DEFAULT '', 
-  `signature` varchar(128) NOT NULL DEFAULT '', 
+  `signature` varchar(512) NOT NULL DEFAULT '', 
   `status` varchar(16) NOT NULL DEFAULT '',
   `error_details` varchar(256) NOT NULL DEFAULT '',
   `expiration_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

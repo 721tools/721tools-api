@@ -64,7 +64,7 @@ module.exports = class LimitOrders extends Model {
         defaultValue: ""
       },
       signature: {
-        type: DataTypes.STRING(128),
+        type: DataTypes.STRING(512),
         allowNull: false,
         defaultValue: ""
       },
