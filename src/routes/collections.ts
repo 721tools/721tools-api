@@ -8,7 +8,7 @@ import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
-import { setItemInfo, setOrderItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
+import { setItemInfo, setOrderItemInfo, setNftTradesItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
 
 const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
@@ -335,7 +335,8 @@ CollectionsRouter.post('/:slug/events', async (ctx) => {
   const skipFlagged = ctx.request.body['skip_flagged'];
   let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
-    return [];
+    ctx.body = [];
+    return;
   }
   let events = [];
   if (event_types.includes(OrderType[OrderType.AUCTION_CREATED])
@@ -511,7 +512,8 @@ CollectionsRouter.post('/:slug/listings', async (ctx) => {
   const skipFlagged = ctx.request.body['skip_flagged'];
   let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
-    return [];
+    ctx.body = [];
+    return;
   }
   const where = {
     contract_address: collection.contract_address,
@@ -604,7 +606,8 @@ CollectionsRouter.post('/:slug/sales', async (ctx) => {
   const skipFlagged = ctx.request.body['skip_flagged'];
   let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
-    return [];
+    ctx.body = [];
+    return;
   }
 
   let end_time = getNumberQueryParam('end_time', ctx);
@@ -612,12 +615,10 @@ CollectionsRouter.post('/:slug/sales', async (ctx) => {
     end_time = new Date().getTime();
   }
 
-  end_time = Math.floor(end_time / 1000);
-
-  const contract_address = "0x" + Buffer.from(collection.contract_address, 'binary').toString('hex');
+  const contract_address = ethers.utils.getAddress("0x" + Buffer.from(collection.contract_address, 'binary').toString('hex'));
   let query = `select * from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${Math.floor(occurred_after / 1000)})  and timestamp < FROM_UNIXTIME(${end_time})`
   if (items != null && items.length > 0) {
-    const tokenIds = _.map(items, (item) => item.token_id);
+    const tokenIds = _.map(items, (item) => parseInt(item.token_id.toString("hex"), 16));
     query += ` and tokenId in (${tokenIds.join(', ')})`;
   }
   query += ` order by height desc, logIndex desc limit ${limit}`
@@ -631,13 +632,13 @@ CollectionsRouter.post('/:slug/sales', async (ctx) => {
       owner_address: item.seller,
       to: item.buyer,
       height: item.height,
-      logIndex: item.logIndex,
+      log_index: item.logIndex,
       tx_hash: item.tx_hash,
-      event_timestamp: item.timestamp.getTime(),
+      event_timestamp: new Date(item.timestamp).getTime(),
       quantity: item.amount,
     })));
     if (items) {
-      await setOrderItemInfo(results, items, collection);
+      await setNftTradesItemInfo(results, items, collection);
     } else {
       await setItemInfo(results, collection);
     }
@@ -844,7 +845,8 @@ CollectionsRouter.post('/:slug/depth', async (ctx) => {
   const skipFlagged = ctx.request.body['skip_flagged'];
   let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
-    return [];
+    ctx.body = [];
+    return;
   }
   const where = {
     where: {

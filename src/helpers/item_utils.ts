@@ -5,7 +5,7 @@ import { parseTokenId } from "../helpers/binary_utils";
 export const setItemInfo = async (items, collection) => {
     if (items && items.length > 0) {
         const selectTokens = [];
-        const isStringTokenId = typeof items[0].token_id === "string";
+        const isStringTokenId = typeof items[0].token_id === "string" || typeof items[0].token_id === "number";
         for (const item of items) {
             if (isStringTokenId) {
                 selectTokens.push(parseTokenId(item.token_id));
@@ -68,12 +68,37 @@ export const setOrderItemInfo = async (orders, items, collection) => {
     return orders;
 };
 
+export const setNftTradesItemInfo = async (orders, items, collection) => {
+    let itemMap = new Map<string, typeof OpenseaItems>();
+    if (items && items.length > 0) {
+        itemMap = new Map<string, typeof OpenseaItems>(items.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
+    }
+    for (let index in orders) {
+        const nft = orders[index];
+        const tokenId = nft.token_id.toString();
+        if (itemMap.has(tokenId)) {
+            const item = itemMap.get(tokenId);
+            nft.rank = item.traits_rank;
+            nft.image = item.image_url;
+            nft.name = item.name;
+            nft.supports_wyvern = item.supports_wyvern;
+        } else {
+            nft.name = collection.name + " #" + tokenId;
+            nft.image = collection.image_url;
+            nft.rank = 0;
+            nft.supports_wyvern = true;
+        }
+        orders[index] = nft;
+    }
+    return orders;
+};
+
 export const getItemsByTraitsAndSkipFlagged = async (collection, traits, skipFlagged) => {
     const where = {
         contract_address: collection.contract_address,
     };
     if (skipFlagged) {
-        where['supports_wyvern'] = false;
+        where['supports_wyvern'] = true;
     }
     const items = await OpenseaItems.findAll({
         where: where
