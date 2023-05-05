@@ -646,6 +646,85 @@ CollectionsRouter.post('/:slug/sales', async (ctx) => {
   ctx.body = results;
 });
 
+CollectionsRouter.post('/:slug/stats', async (ctx) => {
+  let slug = ctx.params.slug;
+  if (!slug) {
+    ctx.status = 404;
+    ctx.body = {
+      error: HttpError[HttpError.NO_COLLECTION_FOUND]
+    }
+    return;
+  }
+
+  let criteria = {};
+  if (slug.lastIndexOf("0x") === 0 && ethers.utils.isAddress(slug)) {
+    criteria = {
+      contract_address: Buffer.from(slug.slice(2), 'hex')
+    }
+  } else {
+    criteria = {
+      slug: slug
+    }
+  }
+  const collection = await OpenseaCollections.findOne({
+    where: criteria
+  });
+  if (!collection) {
+    ctx.status = 400;
+    ctx.body = {
+      error: HttpError[HttpError.NOT_VALID_SLUG]
+    }
+    return;
+  }
+
+  let occurred_after = getNumberParam('occurred_after', ctx);
+  if (occurred_after <= 0) {
+    occurred_after = 0;
+  }
+  const traits = ctx.request.body['traits'];
+  const skipFlagged = ctx.request.body['skip_flagged'];
+  let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
+  if (items && items.length == 0) {
+    ctx.body = {
+      listings: 0,
+      sales: 0,
+    }
+    return;
+  }
+
+  let end_time = getNumberQueryParam('end_time', ctx);
+  if (end_time <= 0) {
+    end_time = new Date().getTime();
+  }
+
+  const contract_address = ethers.utils.getAddress("0x" + Buffer.from(collection.contract_address, 'binary').toString('hex'));
+  let query = `select count(*) as count from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${Math.floor(occurred_after / 1000)})  and timestamp < FROM_UNIXTIME(${end_time})`
+  if (items != null && items.length > 0) {
+    const tokenIds = _.map(items, (item) => parseInt(item.token_id.toString("hex"), 16));
+    query += ` and tokenId in (${tokenIds.join(', ')})`;
+  }
+  const nftTrades = await clickhouse.query(query).toPromise();
+
+  const where = {
+    contract_address: collection.contract_address,
+    status: 1,
+    type: OrderType.AUCTION_CREATED,
+    order_event_timestamp: { [Sequelize.Op.gt]: new Date(occurred_after) }
+  };
+
+  if (items != null && items.length > 0) {
+    const tokenIds = _.map(items, (item) => item.token_id);
+    where['token_id'] = tokenIds;
+  }
+
+  const ordersCount = await Orders.count({
+    where: where,
+  });
+  ctx.body = {
+    listings: ordersCount,
+    sales: nftTrades && nftTrades.length > 0 && nftTrades[0].count > 0 ? nftTrades[0].count : 0,
+  };
+});
 
 CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
   let slug = ctx.params.slug;
