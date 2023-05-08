@@ -46,6 +46,10 @@ module.exports = class Orders extends Model {
         allowNull: false,
         defaultValue: 0
       },
+      protocol_address: {
+        type: DataTypes.STRING.BINARY,
+        allowNull: false,
+      },
       type: {
         type: DataTypes.TINYINT,
         allowNull: false,
@@ -60,16 +64,6 @@ module.exports = class Orders extends Model {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0
-      },
-      trait_type: {
-        type: DataTypes.STRING(128),
-        allowNull: false,
-        defaultValue: ""
-      },
-      trait_name: {
-        type: DataTypes.STRING(128),
-        allowNull: false,
-        defaultValue: ""
       },
       calldata: {
         type: DataTypes.STRING.BINARY,
