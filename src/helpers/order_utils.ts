@@ -19,7 +19,15 @@ import { decode, parseCalldata } from "./blur_utils";
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
 
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
+const seaportProxyIface = new ethers.utils.Interface(seaportProxyAbi);
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
+const j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
+
+const seaportAbi = [
+    'function fulfillBasicOrder(tuple(address considerationToken, uint256 considerationIdentifier, uint256 considerationAmount, address offerer, address zone, address offerToken, uint256 offerIdentifier, uint256 offerAmount, uint8 basicOrderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 offererConduitKey, bytes32 fulfillerConduitKey, uint256 totalOriginalAdditionalRecipients, tuple(uint256 amount, address recipient)[] additionalRecipients, bytes signature) parameters) payable returns (bool fulfilled)',
+]
+const seaportIface = new ethers.utils.Interface(seaportAbi);
+
 
 export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
     let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
@@ -251,17 +259,19 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         return result;
     }
 
-    const openseaIface = new ethers.utils.Interface(seaportProxyAbi)
+
 
     if (orders.seaport.db.length > 0) {
         for (const order of orders.seaport.db) {
-            tradeDetails.push({ marketId: order.platform, value: order.price, tradeData: order.calldata });
+            const seaportOrder = seaportIface.decodeFunctionData("fulfillBasicOrder", order.calldata);
+            const calldata = seaportProxyIface.encodeFunctionData("buyAssetsForEth", [[seaportOrder.parameters]]);
+            tradeDetails.push({ marketId: order.platform, value: order.price, tradeData: calldata });
             result.value = result.value.add(order.price);
         }
     }
     // if (orders.seaport.remote.length > 0) {
     //     for (const order of orders.seaport.remote) {
-    //         const calldata = openseaIface.encodeFunctionData("buyAssetsForEth", [[order]]);
+    //         const calldata = seaportProxyIface.encodeFunctionData("buyAssetsForEth", [[order]]);
     //         let currentPrice = BigNumber.from(order.considerationAmount);
     //         for (const additionalRecipient of order.additionalRecipients) {
     //             currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
@@ -271,7 +281,6 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
     //     }
     // }
 
-    let j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [tradeDetails]);
     result.calldata = data;
     return result;
@@ -279,7 +288,6 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
 
 
 export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
-    const openseaIface = new ethers.utils.Interface(seaportProxyAbi);
     let index = 0;
     const tokenIds = limitOrder.token_ids;
     if (null != tokenIds && tokenIds.length > 0) {
@@ -288,7 +296,7 @@ export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
         }
     }
 
-    const calldata = openseaIface.encodeFunctionData("fillOrder", [
+    const calldata = seaportProxyIface.encodeFunctionData("fillOrder", [
         [
             address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), 1,
             ethers.utils.parseUnits(limitOrder.price.toString(), "ether"),

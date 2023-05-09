@@ -23,7 +23,6 @@ export const parseCalldata = (calldata) => {
     if (parsedData.name == "execute") {
         args = [[args]];
     }
-    console.log(JSON.stringify(args));
     const blurProxyIface = new ethers.utils.Interface(blurProxyAbi);
     return blurProxyIface.encodeFunctionData("buyAssetsForEth", args);
 }
