@@ -186,7 +186,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
                     result.message = HttpError[HttpError.ORDER_EXPIRED];
                     return result;
                 }
-                const protocol_address = '0x' + Buffer.from(order.protocol_address, 'binary').toString('hex');
+                const protocol_address = ethers.utils.getAddress('0x' + Buffer.from(order.protocol_address, 'binary').toString('hex'));
                 if (!markets[protocol_address]) {
                     missingTokens.push(tokenId.toString())
                     result.success = false;
@@ -194,9 +194,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
                     return result;
                 }
                 const platform = process.env.NETWORK === 'goerli' ? markets[protocol_address].goerli_platform_number : markets[protocol_address].ethereum_platform_number;
-
                 orders.seaport.db.push({ price: ethers.utils.parseUnits(order.price.toString(), "ether"), token_id: tokenId, calldata: order.calldata, platform: platform });
-
                 for (const index in openseaLeftTokens) {
                     if (openseaLeftTokens[index].token_id.toString() == tokenId.toString()) {
                         openseaLeftTokens.splice(index);
@@ -257,8 +255,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
 
     if (orders.seaport.db.length > 0) {
         for (const order of orders.seaport.db) {
-            const calldata = order.calldata;
-            tradeDetails.push({ marketId: order.plateform, value: order.price, tradeData: calldata });
+            tradeDetails.push({ marketId: order.platform, value: order.price, tradeData: order.calldata });
             result.value = result.value.add(order.price);
         }
     }
