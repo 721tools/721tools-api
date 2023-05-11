@@ -123,35 +123,14 @@ const getSevenDaysVolumns = async (collection) => {
     },
     order: [['id', 'ASC']]
   });
-  const lastDay = new Date().setHours(0, 0, 0, 0);
-  const firstDay = lastDay - 6 * 24 * 60 * 60 * 1000;
 
   const result = {};
-  if (historys.length >= 7) {
-    let day = firstDay;
-    let lastVolumn = 0;
-    for (const history of historys) {
-      if (day > lastDay) {
-        break;
-      }
-      let dayMissed = true;
-      while (new Date(history.create_time).getTime() < day) {
-        dayMissed = false;
-        continue;
-      }
-      if (!dayMissed) {
-        result[new Date(day).toISOString().slice(0, 10).replace(/-/g, "")] = lastVolumn == 0 ? 0 : history.total_volume - lastVolumn;
-        lastVolumn = history.total_volume;
-        day += 24 * 60 * 60 * 1000;
-      } else {
-        result[new Date(day).toISOString().slice(0, 10).replace(/-/g, "")] = 0;
-        lastVolumn = history.total_volume;
-        day += 24 * 60 * 60 * 1000;
-      }
-    }
-  } else {
-    for (let day = firstDay; day <= lastDay; day += 24 * 60 * 60 * 1000) {
-      result[new Date(day).toISOString().slice(0, 10).replace(/-/g, "")] = 0;
+  let lastDate = null;
+  for (const history of historys) {
+    const date = history.create_time;
+    if (!lastDate || date.getDate() !== lastDate.getDate()) {
+      result[date.toISOString().slice(0, 10).replace(/-/g, "")] = history.one_day_volume;
+      lastDate = date;
     }
   }
   return result;
