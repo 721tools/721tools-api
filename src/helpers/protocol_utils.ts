@@ -17,7 +17,7 @@ export const markets: { [key: string]: ContractInfo } = {
     },
     '0x00000000000000ADc04C56Bf30aC9d3c0aAF14dC': {
         name: 'Seaport 1.5',
-        goerli_platform_number: 11,
+        goerli_platform_number: 14,
         ethereum_platform_number: 0,
     },
     '0x000000000000Ad05Ccc4F10045630fb830B95127': {
