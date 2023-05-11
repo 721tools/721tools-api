@@ -120,8 +120,7 @@ const getSevenDaysVolumns = async (collection) => {
   const historys = await OpenseaCollectionsHistory.findAll({
     where: {
       contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
-      create_time:
-        { [Sequelize.Op.gt]: new Date(endTimestamp) },
+      create_time: { [Sequelize.Op.gt]: new Date(endTimestamp) },
     },
     order: [['id', 'ASC']]
   });
@@ -244,11 +243,13 @@ CollectionsRouter.get('/:slug', async (ctx) => {
     return;
   };
 
+
   const historys = await OpenseaCollectionsHistory.findAll({
     where: {
-      contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')
+      contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+      create_time: { [Sequelize.Op.lte]: new Date(collection.update_time.getTime() - (24 * 60 * 60 * 1000)) },
     },
-    limit: 10,
+    limit: 1,
     order: [['id', 'DESC']]
   });
 
