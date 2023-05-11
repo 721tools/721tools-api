@@ -89,9 +89,10 @@ CollectionsRouter.get('/', async (ctx) => {
   const results = [];
 
   for (const collection of rows) {
-    const sevendaysVolumns = ctx.request.query['include_sevendays_volumns'] ? await getSevenDaysVolumns(collection) : [];
-    const sevendays = Object.keys(sevendaysVolumns);
-    const oneDayPriceChange = sevendaysVolumns[sevendays[sevendays.length - 1]] - sevendaysVolumns[sevendays[sevendays.length - 2]];
+    const sevenDayPrices = ctx.request.query['include_sevenday_prices'] ? await getSevenDayPrices(collection) : {};
+    const sevendays = Object.keys(sevenDayPrices);
+    const oneDayPriceChange = sevendays.length > 2 ? sevenDayPrices[sevendays[sevendays.length - 1]] - sevenDayPrices[sevendays[sevendays.length - 2]] : 0;
+
     results.push({
       slug: collection.slug,
       name: collection.name,
@@ -102,7 +103,7 @@ CollectionsRouter.get('/', async (ctx) => {
       floor_price: parseFloat(parseFloat(collection.floor_price).toFixed(4)),
       verified: collection.verified,
       rarity_enabled: collection.rarity_enabled,
-      sevendays_volumns: sevendaysVolumns,
+      sevenday_prices: sevenDayPrices,
       one_day_price_change: oneDayPriceChange,
     });
   }
@@ -114,7 +115,7 @@ CollectionsRouter.get('/', async (ctx) => {
   }
 });
 
-const getSevenDaysVolumns = async (collection) => {
+const getSevenDayPrices = async (collection) => {
   const endTimestamp = new Date().getTime() - (7 * 24 * 60 * 60 * 1000);
   const historys = await OpenseaCollectionsHistory.findAll({
     where: {
@@ -129,7 +130,7 @@ const getSevenDaysVolumns = async (collection) => {
   for (const history of historys) {
     const date = history.create_time;
     if (!lastDate || date.getDate() !== lastDate.getDate()) {
-      result[date.toISOString().slice(0, 10).replace(/-/g, "")] = history.one_day_volume;
+      result[date.toISOString().slice(0, 10).replace(/-/g, "")] = history.floor_price;
       lastDate = date;
     }
   }
