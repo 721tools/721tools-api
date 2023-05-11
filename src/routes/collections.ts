@@ -91,7 +91,10 @@ CollectionsRouter.get('/', async (ctx) => {
   for (const collection of rows) {
     const sevenDayPrices = ctx.request.query['include_sevenday_prices'] ? await getSevenDayPrices(collection) : {};
     const sevendays = Object.keys(sevenDayPrices);
-    const oneDayPriceChange = sevendays.length > 2 ? sevenDayPrices[sevendays[sevendays.length - 1]] - sevenDayPrices[sevendays[sevendays.length - 2]] : 0;
+    let oneDayPriceChange = 0;
+    if (sevendays.length > 2 && sevenDayPrices[sevendays[sevendays.length - 2]] > 0) {
+      oneDayPriceChange = parseFloat(((sevenDayPrices[sevendays[sevendays.length - 1]] - sevenDayPrices[sevendays[sevendays.length - 2]]) / sevenDayPrices[sevendays[sevendays.length - 2]] * 100).toFixed(2));
+    }
 
     results.push({
       slug: collection.slug,
