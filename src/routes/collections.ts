@@ -629,14 +629,24 @@ CollectionsRouter.post('/:slug/sales', async (ctx) => {
     end_time = new Date().getTime();
   }
 
-  const contract_address = ethers.utils.getAddress("0x" + Buffer.from(collection.contract_address, 'binary').toString('hex'));
-  let query = `select * from nft_trades where address = '${contract_address}' and timestamp >= FROM_UNIXTIME(${Math.floor(occurred_after / 1000)})  and timestamp < FROM_UNIXTIME(${end_time})`
-  if (items != null && items.length > 0) {
-    const tokenIds = _.map(items, (item) => parseInt(item.token_id.toString("hex"), 16));
-    query += ` and tokenId in (${tokenIds.join(', ')})`;
+  const tradeWhere = {
+    address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+    timestamp: {
+      [Sequelize.Op.gte]: new Date(occurred_after),
+      [Sequelize.Op.lt]: new Date(end_time)
+    }
   }
-  query += ` order by height desc, logIndex desc limit ${limit}`
-  const nftTrades = await clickhouse.query(query).toPromise();
+  if (items) {
+    const tokenIds = _.map(items, (item) => parseInt(item.token_id.toString("hex"), 16));
+    tradeWhere['tokenId'] = tokenIds;
+  }
+  const nftTrades = await NFTTrades.findAll({
+    where: tradeWhere,
+    order: [
+      ["height", "DESC"],
+      ["logIndex", "DESC"],
+    ],
+  });
   let results = [];
   if (nftTrades.length > 0) {
     Array.prototype.push.apply(results, _.map(nftTrades, (item) => ({
