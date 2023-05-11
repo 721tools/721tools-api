@@ -115,7 +115,7 @@ CollectionsRouter.get('/', async (ctx) => {
 });
 
 const getSevenDaysVolumns = async (collection) => {
-  const endTimestamp = new Date().getTime() - (8 * 24 * 60 * 60 * 1000);
+  const endTimestamp = new Date().getTime() - (7 * 24 * 60 * 60 * 1000);
   const historys = await OpenseaCollectionsHistory.findAll({
     where: {
       contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
