@@ -10,7 +10,6 @@ import { parseTokenId } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
 import { setItemInfo, setOrderItemInfo, setNftTradesItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
 
-const clickhouse = require('../dal/clickhouse');
 const Op = Sequelize.Op;
 
 const CollectionsRouter = new Router({})
