@@ -3,7 +3,7 @@ import Sequelize from 'sequelize';
 import { ethers } from 'ethers';
 
 import _ from 'underscore';
-import { OpenseaCollections, Orders, NFTTrades, OpenseaItems } from '../dal/db';
+import { OpenseaCollections, OpenseaCollectionsHistory, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
 import { parseTokenId } from "../helpers/binary_utils";
@@ -116,8 +116,15 @@ CollectionsRouter.get('/', async (ctx) => {
 });
 
 const getSevenDaysVolumns = async (collection) => {
-  const clickHouseQuery = `select * from opensea_collections_history where contract_address = '${'0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')}' and create_time > now() - interval 24*8 hour order by id asc`;
-  const historys = await clickhouse.query(clickHouseQuery).toPromise();
+  const endTimestamp = new Date().getTime() - (8 * 24 * 60 * 60 * 1000);
+  const historys = await OpenseaCollectionsHistory.findAll({
+    where: {
+      contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+      create_time:
+        { [Sequelize.Op.gt]: new Date(endTimestamp) },
+    },
+    order: [['id', 'ASC']]
+  });
   const lastDay = new Date().setHours(0, 0, 0, 0);
   const firstDay = lastDay - 6 * 24 * 60 * 60 * 1000;
 
@@ -237,8 +244,14 @@ CollectionsRouter.get('/:slug', async (ctx) => {
     return;
   };
 
-  const clickHouseQuery = `select * from opensea_collections_history where contract_address = '${'0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')}' and create_time > now() - interval 24 hour order by id desc limit 10`;
-  const historys = await clickhouse.query(clickHouseQuery).toPromise();
+  const historys = await OpenseaCollectionsHistory.findAll({
+    where: {
+      contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')
+    },
+    limit: 10,
+    order: [['id', 'DESC']]
+  });
+
   let history = null;
   if (historys && historys.length > 0) {
     history = historys[historys.length - 1];
