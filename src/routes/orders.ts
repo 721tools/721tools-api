@@ -6,7 +6,7 @@ import Sequelize from 'sequelize';
 import { ethers } from "ethers";
 import { recoverTypedSignature, SignTypedDataVersion } from '@metamask/eth-sig-util';
 
-import { OpenseaCollections, LimitOrders } from '../dal/db';
+import { OpenseaCollections, LimitOrders, OrderFilleds } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { parseAddress } from '../helpers/binary_utils';
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
@@ -17,6 +17,7 @@ import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 import { getItemsByTraits } from "../helpers/item_utils";
+import { setMultiCollectionItemInfo } from "../helpers/item_utils";
 
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 
@@ -417,9 +418,6 @@ OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
   const slug = ctx.request.query['slug'];
 
-
-
-
   let page = getNumberQueryParam('page', ctx);
   if (page <= 0) {
     page = 1;
@@ -481,6 +479,77 @@ OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
         update_time: order.update_time.getTime()
       }
     })
+  }
+});
+
+
+OrdersRouter.get('/sweep', requireLogin, requireWhitelist, async (ctx) => {
+  const user = ctx.session.siwe.user;
+  const slug = ctx.request.query['slug'];
+
+  let page = getNumberQueryParam('page', ctx);
+  if (page <= 0) {
+    page = 1;
+  }
+
+  let limit = getNumberQueryParam('limit', ctx);
+  if (limit <= 0) {
+    limit = 10;
+  }
+  if (limit > 20) {
+    limit = 20;
+  }
+
+  const where = {
+    buyer: user.address
+  };
+  if (slug) {
+    const collection = await OpenseaCollections.findOne({
+      where: {
+        slug: slug
+      }
+    });
+
+    if (!collection) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.NOT_VALID_SLUG]
+      }
+      return;
+    }
+    where['contract_address'] = '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')
+  }
+
+
+  const { rows, count } = await OrderFilleds.findAndCountAll({
+    where: where,
+    offset: (page.valueOf() - 1) * limit.valueOf(),
+    limit: limit,
+    order: [['id', 'DESC']]
+  });
+  let results = [];
+  if (rows.length > 0) {
+    Array.prototype.push.apply(results, _.map(rows, (item) => ({
+      token_id: parseInt(item.tokenId),
+      price: parseFloat(ethers.utils.formatUnits(item.priceETH, 'ether')),
+      from: item.plateform,
+      owner_address: item.seller,
+      to: item.buyer,
+      height: item.height,
+      log_index: item.logIndex,
+      tx_hash: item.tx_hash,
+      event_timestamp: new Date(item.timestamp).getTime(),
+      quantity: item.amount,
+    })))
+      ;
+    await setMultiCollectionItemInfo(results);
+  }
+
+  ctx.body = {
+    page: page,
+    limit: limit,
+    total: count,
+    data: results,
   }
 });
 

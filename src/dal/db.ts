@@ -47,4 +47,5 @@ export const {
   NFTTrades,
   LimitOrders,
   OrderBuyLogs,
+  OrderFilleds,
 } = initModels(sequelize, assetsSequelize)

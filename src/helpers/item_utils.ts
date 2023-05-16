@@ -1,6 +1,8 @@
 import _ from 'lodash';
-import { OpenseaItems } from '../dal/db';
-import { parseTokenId } from "../helpers/binary_utils";
+import Sequelize from 'sequelize';
+
+import { OpenseaCollections, OpenseaItems } from '../dal/db';
+import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 
 export const setItemInfo = async (items, collection) => {
     if (items && items.length > 0) {
@@ -190,3 +192,43 @@ export const getItemsByTraits = async (collection, traits) => {
     }
     return result;
 }
+
+export const setMultiCollectionItemInfo = async (items) => {
+    const selectTokens = [];
+    for (const item of items) {
+        selectTokens.push({
+            "contract_address": parseAddress(item.address),
+            "token_id": parseTokenId(item.token_id)
+        });
+    }
+    const itemsRes = await OpenseaItems.findAll({ where: { [Sequelize.Op.or]: selectTokens } });
+    const collectionsRes = await OpenseaCollections.findAll({
+        where: {
+            contract_address: itemsRes.map(item => item.contract_address)
+        }
+    });
+
+    const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex') + "|" + parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
+    const collctionMap = new Map<string, typeof OpenseaCollections>(collectionsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex'), item.dataValues]));
+
+    for (let index in items) {
+        const item = items[index];
+        if (itemMap.has(item.address + "|" + item.tokenId)) {
+            const openseaItem = itemMap.get(item.address + "|" + item.tokenId);
+            item.rank = openseaItem.traits_rank;
+            item.image = openseaItem.image_url;
+            item.name = openseaItem.name;
+            item.supports_wyvern = openseaItem.supports_wyvern;
+        } else {
+            if (collctionMap.has(item.address)) {
+                const collection = collctionMap.get(item.address);
+                item.name = collection.name + " #" + item.tokenId;
+                item.image = collection.image_url;
+                item.rank = 0;
+                item.supports_wyvern = true;
+            }
+        }
+        items[index] = item;
+    }
+    return items;
+};

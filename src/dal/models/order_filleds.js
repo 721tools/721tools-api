@@ -1,0 +1,67 @@
+const _sequelize = require("sequelize");
+const { Model, Sequelize } = _sequelize;
+
+module.exports = class OrderFilleds extends Model {
+  static init(sequelize, DataTypes) {
+    const model = super.init({
+      height: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+      },
+      timestamp: {
+        type: DataTypes.DATE(6),
+        allowNull: false,
+        defaultValue: Sequelize.Sequelize.literal('CURRENT_TIMESTAMP(6)')
+      },
+      tx_hash: {
+        type: DataTypes.STRING(66),
+        allowNull: false,
+        defaultValue: "",
+        primaryKey: true,
+      },
+      logIndex: {
+        type: DataTypes.INTEGER,
+      },
+      plateform: {
+        type: DataTypes.TINYINT,
+      },
+      address: {
+        type: DataTypes.STRING(42),
+        allowNull: false,
+        defaultValue: ""
+      },
+      tokenId: {
+        type: DataTypes.STRING(256),
+        allowNull: false,
+        defaultValue: ""
+      },
+      amount: {
+        type: DataTypes.INTEGER,
+      },
+      buyer: {
+        type: DataTypes.STRING(42),
+        allowNull: false,
+        defaultValue: ""
+      },
+      seller: {
+        type: DataTypes.STRING(42),
+        allowNull: false,
+        defaultValue: ""
+      },
+      priceETH: {
+        type: DataTypes.DECIMAL(16, 8),
+        allowNull: false,
+        defaultValue: 0.0000
+      },
+      direction: {
+        type: DataTypes.TINYINT,
+      },
+    }, {
+      sequelize,
+      tableName: 'order_filleds',
+      timestamps: false,
+    });
+    model.removeAttribute("id");
+    return model;
+  };
+}
