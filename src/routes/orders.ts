@@ -517,7 +517,7 @@ OrdersRouter.get('/sweep', requireLogin, requireWhitelist, async (ctx) => {
       }
       return;
     }
-    where['contract_address'] = '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')
+    where['address'] = '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')
   }
 
 
