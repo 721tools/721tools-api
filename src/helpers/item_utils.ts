@@ -210,19 +210,18 @@ export const setMultiCollectionItemInfo = async (items) => {
 
     const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex') + "|" + parseInt(item.token_id.toString("hex"), 16), item.dataValues]));
     const collctionMap = new Map<string, typeof OpenseaCollections>(collectionsRes.map((item) => ['0x' + Buffer.from(item.contract_address, 'binary').toString('hex'), item.dataValues]));
-
     for (let index in items) {
         const item = items[index];
-        if (itemMap.has(item.contract_address + "|" + item.tokenId)) {
-            const openseaItem = itemMap.get(item.contract_address + "|" + item.tokenId);
+        if (itemMap.has(item.contract_address.toLowerCase() + "|" + item.token_id)) {
+            const openseaItem = itemMap.get(item.contract_address.toLowerCase() + "|" + item.token_id);
             item.rank = openseaItem.traits_rank;
             item.image = openseaItem.image_url;
             item.name = openseaItem.name;
             item.supports_wyvern = openseaItem.supports_wyvern;
         } else {
             if (collctionMap.has(item.contract_address)) {
-                const collection = collctionMap.get(item.contract_address);
-                item.name = collection.name + " #" + item.tokenId;
+                const collection = collctionMap.get(item.contract_address.toLowerCase());
+                item.name = collection.name + " #" + item.token_id;
                 item.image = collection.image_url;
                 item.rank = 0;
                 item.supports_wyvern = true;
