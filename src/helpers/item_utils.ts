@@ -197,7 +197,7 @@ export const setMultiCollectionItemInfo = async (items) => {
     const selectTokens = [];
     for (const item of items) {
         selectTokens.push({
-            "contract_address": parseAddress(item.address),
+            "contract_address": parseAddress(item.contract_address),
             "token_id": parseTokenId(item.token_id)
         });
     }
@@ -213,15 +213,15 @@ export const setMultiCollectionItemInfo = async (items) => {
 
     for (let index in items) {
         const item = items[index];
-        if (itemMap.has(item.address + "|" + item.tokenId)) {
-            const openseaItem = itemMap.get(item.address + "|" + item.tokenId);
+        if (itemMap.has(item.contract_address + "|" + item.tokenId)) {
+            const openseaItem = itemMap.get(item.contract_address + "|" + item.tokenId);
             item.rank = openseaItem.traits_rank;
             item.image = openseaItem.image_url;
             item.name = openseaItem.name;
             item.supports_wyvern = openseaItem.supports_wyvern;
         } else {
-            if (collctionMap.has(item.address)) {
-                const collection = collctionMap.get(item.address);
+            if (collctionMap.has(item.contract_address)) {
+                const collection = collctionMap.get(item.contract_address);
                 item.name = collection.name + " #" + item.tokenId;
                 item.image = collection.image_url;
                 item.rank = 0;

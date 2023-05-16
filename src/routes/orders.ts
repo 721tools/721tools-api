@@ -541,6 +541,7 @@ OrdersRouter.get('/sweep', requireLogin, requireWhitelist, async (ctx) => {
       height: item.height,
       log_index: item.logIndex,
       tx_hash: item.tx_hash,
+      contract_address: item.address,
       event_timestamp: new Date(item.timestamp).getTime(),
       quantity: item.amount,
     })))
