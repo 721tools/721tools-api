@@ -525,7 +525,10 @@ OrdersRouter.get('/sweep', requireLogin, requireWhitelist, async (ctx) => {
     where: where,
     offset: (page.valueOf() - 1) * limit.valueOf(),
     limit: limit,
-    order: [['id', 'DESC']]
+    order: [
+      ["height", "DESC"],
+      ["logIndex", "DESC"],
+    ],
   });
   let results = [];
   if (rows.length > 0) {
