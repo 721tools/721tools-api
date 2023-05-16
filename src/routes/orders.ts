@@ -415,6 +415,10 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
 
 OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
   const user = ctx.session.siwe.user;
+  const slug = ctx.request.query['slug'];
+
+
+
 
   let page = getNumberQueryParam('page', ctx);
   if (page <= 0) {
@@ -429,10 +433,29 @@ OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
     limit = 20;
   }
 
+  const where = {
+    user_id: user.id
+  };
+  if (slug) {
+    const collection = await OpenseaCollections.findOne({
+      where: {
+        slug: slug
+      }
+    });
+
+    if (!collection) {
+      ctx.status = 400;
+      ctx.body = {
+        error: HttpError[HttpError.NOT_VALID_SLUG]
+      }
+      return;
+    }
+    where['contract_address'] = '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')
+  }
+
+
   const { rows, count } = await LimitOrders.findAndCountAll({
-    where: {
-      user_id: user.id
-    },
+    where: where,
     offset: (page.valueOf() - 1) * limit.valueOf(),
     limit: limit,
     order: [Sequelize.literal(`Field(status, 'INIT', 'RUNNING', 'WETH_NOT_ENOUGH', 'WETH_ALLOWANCE_NOT_ENOUGH', 'EXPIRED', 'FINISHED')`), ['id', 'DESC']]
@@ -445,6 +468,7 @@ OrdersRouter.get('/', requireLogin, requireWhitelist, async (ctx) => {
       return {
         id: order.id,
         slug: order.slug,
+        contract_address: order.contract_address,
         traits: order.traits,
         skip_flagged: order.skip_flagged,
         price: order.price,
