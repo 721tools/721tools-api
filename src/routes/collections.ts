@@ -6,8 +6,9 @@ import _ from 'underscore';
 import { OpenseaCollections, OpenseaCollectionsHistory, Orders, NFTTrades, OpenseaItems } from '../dal/db';
 import { HttpError } from '../model/http-error';
 import { OrderType } from '../model/order-type';
-import { parseTokenId } from "../helpers/binary_utils";
+import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { getNumberQueryParam, getNumberParam } from "../helpers/param_utils";
+import { requireLogin, requireWhitelist } from "../helpers/auth_helper";
 import { setItemInfo, setOrderItemInfo, setNftTradesItemInfo, getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
 
 const Op = Sequelize.Op;
@@ -743,7 +744,7 @@ CollectionsRouter.post('/:slug/stats', async (ctx) => {
   };
 });
 
-CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
+CollectionsRouter.post('/:slug/buy_estimate', requireLogin, requireWhitelist, async (ctx) => {
   let slug = ctx.params.slug;
   if (!slug) {
     ctx.status = 404;
@@ -797,6 +798,9 @@ CollectionsRouter.post('/:slug/buy_estimate', async (ctx) => {
     order_expiration_date: {
       [Sequelize.Op.gt]: new Date()
     },
+    owner_address: {
+      [Sequelize.Op.ne]: parseAddress(ctx.session.siwe.user.address)
+    }
   };
 
   if (items) {
