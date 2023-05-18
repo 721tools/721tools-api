@@ -13,7 +13,7 @@ import { Flatform } from '../model/platform';
 import { OrderType } from '../model/order-type';
 import { BuyStatus } from '../model/buy-status';
 import { parseTokenId, parseAddress } from "./binary_utils";
-import { markets } from "./protocol_utils";
+import { MARKETS, getPlatform } from "./protocol_utils";
 
 import { decode, parseCalldata } from "./blur_utils";
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
@@ -76,7 +76,7 @@ export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
 }
 
 
-export const getCalldata = async (tokens, contractAddress, userAddress, blurAuthToken) => {
+export const getCalldata = async (tokens, contractAddress, userAddress, crossChain, blurAuthToken) => {
     const result = {
         success: true,
         message: "",
@@ -149,7 +149,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
         const blurTxnData = blurResult.buys[0].txnData.data;
         const totalPrice = ethers.utils.parseEther(_.reduce(blurTokens, (memo: number, token: { price: number }) => memo + token.price, 0).toString());
 
-        tradeDetails.push({ marketId: markets["0x000000000000Ad05Ccc4F10045630fb830B95127"].ethereum_platform_number, value: totalPrice, tradeData: parseCalldata(blurTxnData) });
+        tradeDetails.push({ marketId: crossChain ? MARKETS["Blur"].ethereum_cross_platform : MARKETS["Blur"].ethereum_platform, value: totalPrice, tradeData: parseCalldata(blurTxnData) });
         result.value = result.value.add(totalPrice);
     }
 
@@ -195,13 +195,15 @@ export const getCalldata = async (tokens, contractAddress, userAddress, blurAuth
                     return result;
                 }
                 const protocol_address = ethers.utils.getAddress('0x' + Buffer.from(order.protocol_address, 'binary').toString('hex'));
-                if (!markets[protocol_address]) {
+
+                const platform = getPlatform(protocol_address, process.env.NETWORK, crossChain);
+                if (platform == 0) {
                     missingTokens.push(tokenId.toString())
                     result.success = false;
-                    result.message = HttpError[HttpError.ORDER_EXPIRED];
+                    result.message = HttpError[HttpError.PROTOCAL_NOT_SUPPORTED];
                     return result;
                 }
-                const platform = process.env.NETWORK === 'goerli' ? markets[protocol_address].goerli_platform_number : markets[protocol_address].ethereum_platform_number;
+
                 orders.seaport.db.push({ price: ethers.utils.parseUnits(order.price.toString(), "ether"), token_id: tokenId, calldata: order.calldata, platform: platform });
                 for (const index in openseaLeftTokens) {
                     if (openseaLeftTokens[index].token_id.toString() == tokenId.toString()) {
@@ -341,7 +343,7 @@ export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
 
 
 export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
-    const callDataResult = await getCalldata(tokens, contractAddress, user.address, blurAuthToken);
+    const callDataResult = await getCalldata(tokens, contractAddress, user.address, false, blurAuthToken);
 
     if (!callDataResult.success) {
         return;
