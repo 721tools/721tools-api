@@ -33,9 +33,6 @@ async function main(): Promise<void> {
             if (user.valid == 0) {
                 continue;
             }
-            if (!user.smart_address) {
-                continue;
-            }
 
             if (user.type !== UserType[UserType.LIFELONG] && user.expiration_time < new Date()) {
                 continue;
