@@ -34,6 +34,7 @@ async function main(): Promise<void> {
         const tokenId = message.payload.payload.item.nft_id.split("/")[2]
         const price = parseFloat(ethers.utils.formatUnits(message.payload.payload.base_price, 'ether'));
         const collection_slug = message.payload.payload.collection ? message.payload.payload.collection.slug : '';
+        const owner_address = message.payload.payload.maker.address;
         const order_created_date = message.payload.payload.listing_date;
         const order_expiration_date = message.payload.payload.expiration_date;
         const order_event_timestamp = message.payload.payload.event_timestamp;
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
                 },
                 amount: { [Sequelize.Op.gt]: Sequelize.col('purchased') },
                 contract_address: contractAddress,
+
             },
             order: [['id', 'ASC']]
         });
@@ -81,6 +83,9 @@ async function main(): Promise<void> {
             }
 
             if (user.type !== UserType[UserType.LIFELONG] && user.expiration_time < new Date()) {
+                continue;
+            }
+            if (ethers.utils.getAddress(user.address) == ethers.utils.getAddress(owner_address)) {
                 continue;
             }
 

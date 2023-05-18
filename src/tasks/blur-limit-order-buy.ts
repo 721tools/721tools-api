@@ -91,6 +91,9 @@ async function main(): Promise<void> {
             order_expiration_date: {
                 [Sequelize.Op.gt]: new Date()
             },
+            owner_address: {
+                [Sequelize.Op.ne]: parseAddress(user.address)
+            }
         };
 
         if (items != null && items.length > 0) {
