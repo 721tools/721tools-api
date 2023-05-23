@@ -282,6 +282,9 @@ export const getCalldata = async (tokens, contractAddress, userAddress, crossCha
     //         result.value = result.value.add(currentPrice);
     //     }
     // }
+    if (crossChain) {
+        result.value = result.value.add(ethers.utils.parseEther("0.1"));
+    }
 
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [tradeDetails]);
     result.calldata = data;
