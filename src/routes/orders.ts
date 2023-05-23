@@ -20,9 +20,7 @@ import { getItemsByTraits } from "../helpers/item_utils";
 import { setMultiCollectionItemInfo } from "../helpers/item_utils";
 
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
-// @todo use it as it after test
-// const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-const provider = new ethers.providers.JsonRpcProvider(process.env.GOERLI_RPC_URL);
+const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
 const j721tool = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, provider);
 
 const j721xsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721x.json')).toString();
@@ -70,8 +68,9 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   const crossChain = ctx.request.body['cross_chain'];
+  let l2Address = null;
   if (crossChain) {
-    const l2Address = await j721x.getPairFromL1(contract_address);
+    l2Address = await j721x.getPairFromL1(contract_address);
     if (l2Address == "0x0000000000000000000000000000000000000000") {
       ctx.status = 400;
       ctx.body = {
@@ -84,7 +83,7 @@ OrdersRouter.post('/sweep', requireLogin, requireWhitelist, async (ctx) => {
 
   const tokens = ctx.request.body['tokens'];
 
-  const result = await getCalldata(tokens, contract_address, ctx.session.siwe.user.address, crossChain, ctx.request.body['blur_auth_token']);
+  const result = await getCalldata(tokens, contract_address, ctx.session.siwe.user.address, l2Address, ctx.request.body['blur_auth_token']);
   if (!result.success) {
     ctx.status = 400;
 

@@ -17,6 +17,7 @@ import { MARKETS, getPlatform } from "./protocol_utils";
 
 import { decode, parseCalldata } from "./blur_utils";
 import { getWethAddress } from '../helpers/opensea/erc20_utils';
+import { estimateFees } from '../helpers/layer_zero_utils';
 
 const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportProxy.json')).toString();
 const seaportProxyIface = new ethers.utils.Interface(seaportProxyAbi);
@@ -76,7 +77,7 @@ export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
 }
 
 
-export const getCalldata = async (tokens, contractAddress, userAddress, crossChain, blurAuthToken) => {
+export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainAddress, blurAuthToken) => {
     const result = {
         success: true,
         message: "",
@@ -149,7 +150,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, crossCha
         const blurTxnData = blurResult.buys[0].txnData.data;
         const totalPrice = ethers.utils.parseEther(_.reduce(blurTokens, (memo: number, token: { price: number }) => memo + token.price, 0).toString());
 
-        tradeDetails.push({ marketId: crossChain ? MARKETS["Blur"].ethereum_cross_platform : MARKETS["Blur"].ethereum_platform, value: totalPrice, tradeData: parseCalldata(blurTxnData) });
+        tradeDetails.push({ marketId: l2ChainAddress ? MARKETS["Blur"].ethereum_cross_platform : MARKETS["Blur"].ethereum_platform, value: totalPrice, tradeData: parseCalldata(blurTxnData) });
         result.value = result.value.add(totalPrice);
     }
 
@@ -196,7 +197,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, crossCha
                 }
                 const protocol_address = ethers.utils.getAddress('0x' + Buffer.from(order.protocol_address, 'binary').toString('hex'));
 
-                const platform = getPlatform(protocol_address, process.env.NETWORK, crossChain);
+                const platform = getPlatform(protocol_address, process.env.NETWORK, l2ChainAddress);
                 if (platform == 0) {
                     missingTokens.push(tokenId.toString())
                     result.success = false;
@@ -282,8 +283,13 @@ export const getCalldata = async (tokens, contractAddress, userAddress, crossCha
     //         result.value = result.value.add(currentPrice);
     //     }
     // }
-    if (crossChain) {
-        result.value = result.value.add(ethers.utils.parseEther("0.1"));
+    if (l2ChainAddress) {
+        const crossChainFee = await estimateFees(process.env.X_CONTRACT_ADDRESS, ethers.utils.solidityPack(
+            ["uint16", "address", "address", "uint256", "address"],
+            [1, contractAddress, l2ChainAddress, tokens[0].token_id, userAddress]
+        ))
+        console.log(crossChainFee)
+        result.value = result.value.add(crossChainFee);
     }
 
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [tradeDetails]);
@@ -346,7 +352,7 @@ export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
 
 
 export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
-    const callDataResult = await getCalldata(tokens, contractAddress, user.address, false, blurAuthToken);
+    const callDataResult = await getCalldata(tokens, contractAddress, user.address, null, blurAuthToken);
 
     if (!callDataResult.success) {
         return;
