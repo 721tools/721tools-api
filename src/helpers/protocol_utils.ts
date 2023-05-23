@@ -27,7 +27,7 @@ export const MARKETS: { [key: string]: ContractInfo } = {
     },
     'Seaport_1_5': {
         goerli_platform: 14,
-        goerli_cross_platform: 16,
+        goerli_cross_platform: 17,
         ethereum_platform: 0,
         ethereum_cross_platform: 0,
     },
