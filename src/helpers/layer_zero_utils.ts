@@ -8,5 +8,5 @@ const contract = new ethers.Contract("0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23
 
 export const estimateFees = async (userApplication, payload) => {
     const fees = await contract.estimateFees(10109, userApplication, payload, false, ethers.utils.solidityPack(["uint16", "uint256"], [1, 3500000]));
-    return fees.nativeFee;
+    return fees.nativeFee.mul(12).div(10);
 }
