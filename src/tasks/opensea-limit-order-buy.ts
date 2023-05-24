@@ -107,22 +107,29 @@ async function main(): Promise<void> {
                     continue;
                 }
             }
+            if (limitOrder.skip_flagged || !_.isEmpty(limitOrder.traits)) {
+                const where = limitOrder.skip_flagged ? {
+                    contract_address: collection.contract_address,
+                    supports_wyvern: true,
+                    token_id: parseTokenId(tokenId)
+                } : {
+                    contract_address: collection.contract_address,
+                    token_id: parseTokenId(tokenId),
+                };
 
-            const where = limitOrder.skip_flagged ? {
-                contract_address: collection.contract_address,
-                supports_wyvern: true,
-                token_id: parseTokenId(tokenId)
-            } : {
-                contract_address: collection.contract_address,
-                token_id: parseTokenId(tokenId),
-            };
+                const item = await OpenseaItems.findOne({
+                    where: where
+                });
+                if (!item) {
+                    continue;
+                }
+                if (!_.isEmpty(limitOrder.traits)) {
 
-            const item = await OpenseaItems.findOne({
-                where: where
-            });
-            if (!item) {
-                continue;
+                }
+
             }
+
+
 
             const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
             if (wethBalance < price) {

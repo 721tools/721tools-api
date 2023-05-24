@@ -153,7 +153,7 @@ async function main(): Promise<void> {
                             let traitContains = false;
                             if (traitType in traitsMap) {
                                 const traitValues = traitsMap[traitType].map(trait => {
-                                    return trait.value
+                                    return trait.value.toLowerCase();
                                 });
                                 for (const traitValue of smartBuy.traits[traitType]) {
                                     if (traitValues.includes(traitValue)) {

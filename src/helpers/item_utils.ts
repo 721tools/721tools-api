@@ -125,7 +125,7 @@ export const getItemsByTraitsAndSkipFlagged = async (collection, traits, skipFla
             let traitContains = false;
             if (traitType in traitsMap) {
                 const traitValues = traitsMap[traitType].map(trait => {
-                    return trait.value
+                    return trait.value.toLowerCase();
                 });
                 for (const traitValue of traits[traitType]) {
                     if (traitValues.includes(traitValue)) {
