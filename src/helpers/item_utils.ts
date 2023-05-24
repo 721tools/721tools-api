@@ -113,84 +113,47 @@ export const getItemsByTraitsAndSkipFlagged = async (collection, traits, skipFla
     }
     const result = [];
     for (const item of items) {
-        if (_.isEmpty(item.traits)) {
-            continue;
-        }
-        const traitsMap = _.groupBy(item.traits, function (item) {
-            return item.trait_type;
-        });
-
-        let allContains = true;
-        for (const traitType of Object.keys(traits)) {
-            let traitContains = false;
-            if (traitType in traitsMap) {
-                const traitValues = traitsMap[traitType].map(trait => {
-                    return trait.value.toLowerCase();
-                });
-                for (const traitValue of traits[traitType]) {
-                    if (traitValues.includes(traitValue)) {
-                        traitContains = true;
-                        break;
-                    }
-                }
-            }
-            if (!traitContains) {
-                allContains = false;
-                break;
-            }
-        }
-        if (allContains) {
+        if (traitsMatched(item.traits, traits)) {
             result.push(item);
         }
     }
     return result;
 }
 
-export const getItemsByTraits = async (collection, traits) => {
-    const items = await OpenseaItems.findAll({
-        where: {
-            contract_address: collection.contract_address,
-        }
+export const traitsMatched = (itemTraits, targetTraits) => {
+    if (_.isEmpty(itemTraits)) {
+        return false;
+    }
+    if (_.isEmpty(targetTraits)) {
+        return true;
+    }
+    const traitsMap = _.groupBy(itemTraits, function (item) {
+        return item.trait_type;
     });
-    if (items.length == 0) {
-        return items;
-    }
-    if (_.isEmpty(traits)) {
-        return items;
-    }
-    const result = [];
-    for (const item of items) {
-        if (_.isEmpty(item.traits)) {
-            continue;
-        }
-        const traitsMap = _.groupBy(item.traits, function (item) {
-            return item.trait_type;
-        });
 
-        let allContains = true;
-        for (const traitType of Object.keys(traits)) {
-            let traitContains = false;
-            if (traitType in traitsMap) {
-                const traitValues = traitsMap[traitType].map(trait => {
-                    return trait.value
-                });
-                for (const traitValue of traits[traitType]) {
-                    if (traitValues.includes(traitValue)) {
-                        traitContains = true;
-                        break;
-                    }
+    let allContains = true;
+    for (const traitType of Object.keys(targetTraits)) {
+        let traitContains = false;
+        if (traitType in traitsMap) {
+            const traitValues = traitsMap[traitType].map(trait => {
+                return trait.value
+            });
+            for (const traitValue of targetTraits[traitType]) {
+                if (traitValues.includes(traitValue)) {
+                    traitContains = true;
+                    break;
                 }
             }
-            if (!traitContains) {
-                allContains = false;
-                break;
-            }
         }
-        if (allContains) {
-            result.push(item);
+        if (!traitContains) {
+            allContains = false;
+            break;
         }
     }
-    return result;
+    if (allContains) {
+        return true;
+    }
+    return false;
 }
 
 export const setMultiCollectionItemInfo = async (items) => {

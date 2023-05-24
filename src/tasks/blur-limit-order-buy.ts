@@ -11,6 +11,7 @@ import { Flatform } from '../model/platform';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { getAuthToken } from "../helpers/blur_utils";
 import { buy } from "../helpers/order_utils";
+import { traitsMatched } from "../helpers/item_utils";
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 
 
@@ -74,12 +75,14 @@ async function main(): Promise<void> {
         if (null != limitOrder.token_ids && limitOrder.token_ids > 0) {
             where['token_id'] = _.map(limitOrder.token_ids, tokenId => parseTokenId(tokenId));
         }
-        const items = await OpenseaItems.findAll({
+        let items = await OpenseaItems.findAll({
             where: where
         });
         if (!items || items.length == 0) {
             continue;
         }
+        items.filter
+        items = _.filter(items, (item) => traitsMatched(item.traits, limitOrder.traits));
 
         const ordersWhere = {
             contract_address: collection.contract_address,

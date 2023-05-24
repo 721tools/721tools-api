@@ -16,7 +16,7 @@ import { getCalldata } from "../helpers/order_utils";
 import { getNumberParam, getNumberQueryParam } from "../helpers/param_utils";
 import { LimitOrderStatus } from '../model/limit-order-status';
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
-import { getItemsByTraits } from "../helpers/item_utils";
+import { getItemsByTraitsAndSkipFlagged } from "../helpers/item_utils";
 import { setMultiCollectionItemInfo } from "../helpers/item_utils";
 
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
@@ -193,7 +193,7 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
 
 
   const traits = ctx.request.body['traits'];
-  let items = await getItemsByTraits(collection, traits);
+  let items = await getItemsByTraitsAndSkipFlagged(collection, traits, null);
   let tokenIds = [];
   if (_.isEmpty(traits)) {
     if (items.length == 0) {

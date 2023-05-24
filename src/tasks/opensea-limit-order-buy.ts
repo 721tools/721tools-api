@@ -9,6 +9,8 @@ import { UserType } from '../model/user-type';
 import { Flatform } from '../model/platform';
 import { parseTokenId, parseAddress } from "../helpers/binary_utils";
 import { buy } from "../helpers/order_utils";
+import { traitsMatched } from "../helpers/item_utils";
+
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
 
 import { redis } from '../dal/mq';
@@ -123,10 +125,9 @@ async function main(): Promise<void> {
                 if (!item) {
                     continue;
                 }
-                if (!_.isEmpty(limitOrder.traits)) {
-
+                if (!traitsMatched(item.traits, limitOrder.traits)) {
+                    continue;
                 }
-
             }
 
 
