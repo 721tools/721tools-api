@@ -788,7 +788,8 @@ CollectionsRouter.post('/:slug/buy_estimate', requireLogin, requireWhitelist, as
   const skipFlagged = ctx.request.body['skip_flagged'];
   let items = _.isEmpty(traits) && !skipFlagged ? null : await getItemsByTraitsAndSkipFlagged(collection, traits, skipFlagged);
   if (items && items.length == 0) {
-    return result;
+    ctx.body = result;
+    return;
   }
 
   const where = {
