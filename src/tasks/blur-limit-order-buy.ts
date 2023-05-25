@@ -88,6 +88,7 @@ async function main(): Promise<void> {
             contract_address: collection.contract_address,
             status: 1,
             type: OrderType.AUCTION_CREATED,
+            from: Flatform.BLUR,
             price: {
                 [Sequelize.Op.lte]: limitOrder.price,
             },
