@@ -157,7 +157,8 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
 
 
   const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-  if (wethBalance < price) {
+
+  if (wethBalance < price * amount) {
     ctx.status = 400;
     ctx.body = {
       error: HttpError[HttpError.WETH_INSUFFICIEN]
@@ -166,7 +167,7 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
-  if (wethAllowance < price) {
+  if (wethAllowance < price * amount) {
     ctx.status = 400;
     ctx.body = {
       error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
