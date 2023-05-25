@@ -49,7 +49,7 @@ export const getPlatform = (protocalAddress, network, crossChain) => {
         if (crossChain) {
             plateform = market.goerli_cross_platform;
         } else {
-            plateform = market.goerli_cross_platform;
+            plateform = market.goerli_platform;
         }
     } else {
         if (crossChain) {
