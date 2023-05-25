@@ -30,6 +30,12 @@ export const setItemInfo = async (items, collection) => {
                 const item = itemMap.get(tokenId);
                 nft.rank = item.traits_rank;
                 nft.image = item.image_url;
+                if (!nft.image) {
+                    nft.image = item.image_original_url;
+                }
+                if (!nft.image) {
+                    nft.image = collection.image_url;
+                }
                 nft.name = item.name;
                 nft.supports_wyvern = item.supports_wyvern;
             } else {
