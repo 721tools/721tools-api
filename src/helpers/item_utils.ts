@@ -23,7 +23,6 @@ export const setItemInfo = async (items, collection) => {
         });
 
         const itemMap = new Map<string, typeof OpenseaItems>(itemsRes.map((item) => [parseInt(item.token_id.toString("hex"), 16).toString(), item.dataValues]));
-        console.log(itemMap);
         for (let index in items) {
             const nft = items[index];
             const tokenId = isStringTokenId ? nft.token_id.toString() : parseInt(nft.token_id.toString("hex"), 16).toString();
