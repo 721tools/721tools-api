@@ -288,7 +288,6 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
             ["uint16", "address", "address", "uint256", "address"],
             [1, contractAddress, l2ChainAddress, tokens[0].token_id, userAddress]
         ))
-        console.log(crossChainFee)
         result.value = result.value.add(crossChainFee);
     }
 
@@ -307,9 +306,18 @@ export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
         }
     }
 
-    const calldata = seaportProxyIface.encodeFunctionData("fillOrder", [
+    console.log([
         [
-            address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), 1,
+            address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), limitOrder.amount,
+            ethers.utils.parseUnits(limitOrder.price.toString(), "ether"),
+            limitOrder.expiration_time.getTime(),
+            limitOrder.token_ids,
+            limitOrder.salt
+        ], limitOrder.signature, tokenId, index]);
+
+    const calldata = j721toolsIface.encodeFunctionData("fillOrder", [
+        [
+            address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), limitOrder.amount,
             ethers.utils.parseUnits(limitOrder.price.toString(), "ether"),
             limitOrder.expiration_time.getTime(),
             limitOrder.token_ids,
@@ -352,26 +360,22 @@ export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
 
 
 export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
-    const callDataResult = await getCalldata(tokens, contractAddress, user.address, null, blurAuthToken);
-
+    const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
+    const callDataResult = await getCalldata(tokens, contractAddress, signer.address, null, blurAuthToken);
     if (!callDataResult.success) {
         return;
     }
-    const data = callDataResult.calldata;
-
-    const totalValue = BigNumber.from(0).sub(callDataResult.value);
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
 
-    const totalPrice = _.reduce(tokens, (memo: number, token: { price: number }) => memo + token.price, 0);
-    const profit = totalPrice - currentPrice;
+    const profit = limitOrder.price - currentPrice;
+
     if (profit <= 0.01) {
         return;
     }
-
-    const gasLimit = await provider.estimateGas({
+    const gasLimit = await signer.estimateGas({
         to: process.env.CONTRACT_ADDRESS,
-        data: data,
+        data: callDataResult.calldata,
         value: callDataResult.value
     });
     const feeData = await provider.getFeeData();
@@ -386,7 +390,6 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
         return;
     }
 
-    const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
     const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(signer.address)));
     if (balance < (totalGas + currentPrice)) {
         return;
@@ -394,7 +397,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
 
 
     const calls = [];
-    calls.push([process.env.CONTRACT_ADDRESS, data, callDataResult.value]);
+    calls.push([process.env.CONTRACT_ADDRESS, callDataResult.calldata, callDataResult.value]);
 
     for (const token of tokens) {
         calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, token.token_id), 0]);
@@ -406,26 +409,29 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
     ]);
 
     const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit.toString())]);
-    calls.push([getWethAddress(), withdrawWethCalldata, 0]);
-
-    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
-    const tx = await contract.aggregate(calls, { value: totalValue });
-
+    // calls.push([getWethAddress(), withdrawWethCalldata, 0]);
 
     // 1: batchBuyWithETH 
     // 2: fillOrder
     // 3: Unwrap WETH
+    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
+    console.log("calls", calls);
+    console.log("value", callDataResult.value.toString());
 
-    for (const token of tokens) {
-        await OrderBuyLogs.create({
-            user_id: user.id,
-            contract_address: contractAddress,
-            order_id: limitOrder.id,
-            tx: tx.hash,
-            price: token.price,
-            status: BuyStatus[BuyStatus.RUNNING],
-        });
+    try {
+        const tx = await contract.tryAggregate(true, calls, { value: callDataResult.value });
+        for (const token of tokens) {
+            await OrderBuyLogs.create({
+                user_id: user.id,
+                contract_address: contractAddress,
+                order_id: limitOrder.id,
+                tx: tx.hash,
+                price: token.price,
+                status: BuyStatus[BuyStatus.RUNNING],
+            });
+        }
+    } catch (error) {
+        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed`, error)
     }
-
 
 };

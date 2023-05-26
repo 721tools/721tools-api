@@ -359,14 +359,14 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const signature = ctx.request.body['signature'];
   const msgParams = JSON.stringify({
     domain: {
-      chainId: process.env.NETWORK === 'goerli' ? 5 : 1,
-      name: 'Limit Order',
-      verifyingContract: process.env.CONTRACT_ADDRESS,
+      name: 'J721tools',
       version: '1',
+      chainId: process.env.NETWORK === 'goerli' ? 5 : 1,
+      verifyingContract: process.env.CONTRACT_ADDRESS,
     },
     message: {
       offerer: user.address,
-      collection: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
+      collection: ethers.utils.getAddress('0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')),
       nonce: nonce,
       token: getWethAddress(),
       amount: amount,
