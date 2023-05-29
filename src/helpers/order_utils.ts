@@ -353,10 +353,9 @@ export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
 export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
     const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
     const callDataResult = await getCalldata(tokens, contractAddress, signer.address, null, blurAuthToken);
-    console.log(callDataResult)
-    // if (!callDataResult.success) {
-    //     return;
-    // }
+    if (!callDataResult.success) {
+        return;
+    }
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
 
@@ -389,7 +388,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
 
 
     const calls = [];
-    // calls.push([process.env.CONTRACT_ADDRESS, callDataResult.calldata, callDataResult.value]);
+    calls.push([process.env.CONTRACT_ADDRESS, callDataResult.calldata, callDataResult.value]);
 
     for (const token of tokens) {
         calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, token.token_id), 0]);
@@ -401,14 +400,12 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
     ]);
 
     const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit.toString())]);
-    // calls.push([getWethAddress(), withdrawWethCalldata, 0]);
+    calls.push([getWethAddress(), withdrawWethCalldata, 0]);
 
     // 1: batchBuyWithETH 
     // 2: fillOrder
     // 3: Unwrap WETH
     const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
-    console.log("calls", calls);
-    console.log("value", callDataResult.value.toString());
 
     try {
         const tx = await contract.tryAggregate(true, calls, { value: callDataResult.value });
