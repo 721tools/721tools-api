@@ -288,7 +288,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
             ["uint16", "address", "address", "uint256", "address"],
             [1, contractAddress, l2ChainAddress, tokens[0].token_id, userAddress]
         ))
-        result.value = result.value.add(crossChainFee);
+        result.value = result.value.add(crossChainFee.mul(tokens.length));
     }
 
     const data = j721toolsIface.encodeFunctionData("batchBuyWithETH", [tradeDetails]);
@@ -362,9 +362,10 @@ export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
 export const buy = async (provider, user, limitOrder, contractAddress, tokens, blurAuthToken) => {
     const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
     const callDataResult = await getCalldata(tokens, contractAddress, signer.address, null, blurAuthToken);
-    if (!callDataResult.success) {
-        return;
-    }
+    console.log(callDataResult)
+    // if (!callDataResult.success) {
+    //     return;
+    // }
 
     const currentPrice = parseFloat(ethers.utils.formatUnits(callDataResult.value, 'ether'));
 
@@ -397,7 +398,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
 
 
     const calls = [];
-    calls.push([process.env.CONTRACT_ADDRESS, callDataResult.calldata, callDataResult.value]);
+    // calls.push([process.env.CONTRACT_ADDRESS, callDataResult.calldata, callDataResult.value]);
 
     for (const token of tokens) {
         calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, token.token_id), 0]);

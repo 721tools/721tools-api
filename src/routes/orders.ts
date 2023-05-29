@@ -157,7 +157,6 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
 
 
   const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-
   if (wethBalance < price * amount) {
     ctx.status = 400;
     ctx.body = {
@@ -312,11 +311,9 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     }
     return;
   }
-  // @todo use it as it after test
-  // const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-  const provider = new ethers.providers.JsonRpcProvider(process.env.GOERLI_RPC_URL);
+
   const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-  if (wethBalance < price) {
+  if (wethBalance < price * amount) {
     ctx.status = 400;
     ctx.body = {
       error: HttpError[HttpError.WETH_INSUFFICIEN]
@@ -325,7 +322,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
-  if (wethAllowance < price) {
+  if (wethAllowance < price * amount) {
     ctx.status = 400;
     ctx.body = {
       error: HttpError[HttpError.WETH_ALLOWANCE_INSUFFICIEN]
@@ -375,7 +372,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
       tokenIds: tokenIds,
       salt: salt,
     },
-    primaryType: 'Order',
+    primaryType: 'OfferOrder',
     types: {
       EIP712Domain: [
         { name: 'name', type: 'string' },
@@ -383,7 +380,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
         { name: 'chainId', type: 'uint256' },
         { name: 'verifyingContract', type: 'address' },
       ],
-      Order: [
+      OfferOrder: [
         { name: "offerer", type: "address" },
         { name: "collection", type: "address" },
         { name: "nonce", type: "uint256" },
