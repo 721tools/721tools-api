@@ -306,15 +306,6 @@ export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
         }
     }
 
-    console.log([
-        [
-            address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), limitOrder.amount,
-            ethers.utils.parseUnits(limitOrder.price.toString(), "ether"),
-            limitOrder.expiration_time.getTime(),
-            limitOrder.token_ids,
-            limitOrder.salt
-        ], limitOrder.signature, tokenId, index]);
-
     const calldata = j721toolsIface.encodeFunctionData("fillOrder", [
         [
             address, limitOrder.contract_address, limitOrder.nonce, getWethAddress(), limitOrder.amount,
