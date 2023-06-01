@@ -172,6 +172,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
                 price: { [Sequelize.Op.lte]: parseFloat(token.price.toString()) }
             });
         }
+
         const ordersInDb = await Orders.findAll({
             where: {
                 contract_address: parseAddress(contractAddress),
@@ -186,6 +187,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
                 [Sequelize.Op.or]: openseaTokenFilters
             },
         });
+
         if (ordersInDb.length > 0) {
             for (const order of ordersInDb) {
                 const tokenId = parseInt(order.token_id.toString("hex"), 16);
@@ -399,7 +401,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
         'function withdraw(uint256 wad) public'
     ]);
 
-    const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(profit.toString())]);
+    const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(limitOrder.price.toString())]);
     calls.push([getWethAddress(), withdrawWethCalldata, 0]);
 
     // 1: batchBuyWithETH 
@@ -416,9 +418,11 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
                 order_id: limitOrder.id,
                 tx: tx.hash,
                 price: token.price,
+                token_id: token.token_id,
                 status: BuyStatus[BuyStatus.RUNNING],
             });
         }
+        console.log(`Address ${signer.address} buy limit order ${limitOrder.id} success with tx ${tx.hash}`)
     } catch (error) {
         console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed`, error)
     }
