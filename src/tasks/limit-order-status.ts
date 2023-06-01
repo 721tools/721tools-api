@@ -16,7 +16,7 @@ async function main(): Promise<void> {
         const limitOrders = await LimitOrders.findAll({
             where: {
                 status: {
-                    [Sequelize.Op.in]: [LimitOrderStatus[LimitOrderStatus.INIT], LimitOrderStatus[LimitOrderStatus.RUNNING], LimitOrderStatus[LimitOrderStatus.WETH_NOT_ENOUGH], LimitOrderStatus[LimitOrderStatus.WETH_ALLOWANCE_NOT_ENOUGH]]
+                    [Sequelize.Op.in]: [LimitOrderStatus[LimitOrderStatus.INIT], LimitOrderStatus[LimitOrderStatus.RUNNING], LimitOrderStatus[LimitOrderStatus.RUNNING], LimitOrderStatus[LimitOrderStatus.WETH_NOT_ENOUGH], LimitOrderStatus[LimitOrderStatus.WETH_ALLOWANCE_NOT_ENOUGH]]
                 },
                 amount: { [Sequelize.Op.gt]: Sequelize.col('purchased') }
             },
