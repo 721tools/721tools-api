@@ -23,6 +23,8 @@ const seaportProxyAbi = fs.readFileSync(path.join(__dirname, '../abis/SeaportPro
 const seaportProxyIface = new ethers.utils.Interface(seaportProxyAbi);
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 const j721toolsIface = new ethers.utils.Interface(j721toolsAbi);
+const multicall3Abi = fs.readFileSync(path.join(__dirname, '../abis/Multicall3.json')).toString();
+const erc721Abi = fs.readFileSync(path.join(__dirname, '../abis/ERC721.json')).toString();
 
 const seaportAbi = [
     'function fulfillBasicOrder(tuple(address considerationToken, uint256 considerationIdentifier, uint256 considerationAmount, address offerer, address zone, address offerToken, uint256 offerIdentifier, uint256 offerAmount, uint8 basicOrderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 offererConduitKey, bytes32 fulfillerConduitKey, uint256 totalOriginalAdditionalRecipients, tuple(uint256 amount, address recipient)[] additionalRecipients, bytes signature) parameters) payable returns (bool fulfilled)',
@@ -356,6 +358,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
     const signer = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
     const callDataResult = await getCalldata(tokens, contractAddress, signer.address, null, blurAuthToken);
     if (!callDataResult.success) {
+        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed, not calldata found`);
         return;
     }
 
@@ -364,6 +367,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
     const profit = limitOrder.price - currentPrice;
 
     if (profit <= 0.01) {
+        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed, profit ${profit}`);
         return;
     }
     const gasLimit = await signer.estimateGas({
@@ -373,44 +377,58 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
     });
     const feeData = await provider.getFeeData();
 
-    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether'));
+    const totalGas = parseFloat(ethers.utils.formatUnits(gasLimit.mul(feeData.gasPrice), 'ether')) * 3;
 
     if (totalGas > profit) {
+        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed, gas ${totalGas} too high`);
         return;
     }
 
     if (totalGas > profit + 0.01) {
+        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed, profit ${profit}`);
         return;
     }
 
     const balance = parseFloat(ethers.utils.formatEther(await provider.getBalance(signer.address)));
     if (balance < (totalGas + currentPrice)) {
+        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed, balance ${balance}`);
         return;
     }
 
 
     const calls = [];
-    calls.push([process.env.CONTRACT_ADDRESS, callDataResult.calldata, callDataResult.value]);
+    calls.push([process.env.CONTRACT_ADDRESS, false, callDataResult.value, callDataResult.calldata]);
+
+    const erc721Contract = new ethers.Contract(contractAddress, erc721Abi, signer);
+    const isApproved = await erc721Contract.isApprovedForAll(process.env.MULTICALL_CONTRACT_ADDRESS, process.env.CONTRACT_ADDRESS);
+    if (!isApproved) {
+        calls.push([contractAddress, false, 0, erc721Contract.interface.encodeFunctionData("setApprovalForAll", [process.env.CONTRACT_ADDRESS, true])]);
+    }
 
     for (const token of tokens) {
-        calls.push([process.env.CONTRACT_ADDRESS, await getFillOrderCalldata(limitOrder, user.address, token.token_id), 0]);
+        calls.push([process.env.CONTRACT_ADDRESS, false, 0, await getFillOrderCalldata(limitOrder, user.address, token.token_id)]);
     }
 
     const wethIface = new utils.Interface([
         'function approve(address spender, uint256 amount) public returns (bool)',
-        'function withdraw(uint256 wad) public'
+        'function withdraw(uint256 wad) public',
+        'function transferFrom(address src, address dst, uint256 wad) public',
+        'function transfer(address dst, uint256 wad) public'
     ]);
 
     const withdrawWethCalldata = wethIface.encodeFunctionData("withdraw", [ethers.utils.parseEther(limitOrder.price.toString())]);
-    calls.push([getWethAddress(), withdrawWethCalldata, 0]);
+    calls.push([getWethAddress(), false, 0, withdrawWethCalldata]);
+    calls.push([signer.address, false, ethers.utils.parseEther(limitOrder.price.toString()), "0x00"]);
 
     // 1: batchBuyWithETH 
-    // 2: fillOrder
-    // 3: Unwrap WETH
-    const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, signer);
+    // 2: Approve NFT
+    // 3: fillOrder
+    // 4: Unwrap WETH
+    // 5: Transfer ETH Back
+    const contract = new ethers.Contract(process.env.MULTICALL_CONTRACT_ADDRESS, multicall3Abi, signer);
 
     try {
-        const tx = await contract.tryAggregate(true, calls, { value: callDataResult.value });
+        const tx = await contract.aggregate3Value(calls, { value: callDataResult.value });
         for (const token of tokens) {
             await OrderBuyLogs.create({
                 user_id: user.id,
