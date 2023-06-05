@@ -23,7 +23,7 @@ async function main(): Promise<void> {
     // await sub.subscribe("OPENSEA-ETH-ORDER-LISTING", async (str) => {
     //     await handleMessage(str);
     // });
-    const str = ` {"topic":"collection:*","event":"item_listed","payload":{"event_type":"item_listed","payload":{"event_timestamp":"2023-05-25T14:22:42.574277+00:00","base_price":"60000000000000000","collection":{"slug":"wonderpalsgoerli"},"expiration_date":"2023-06-25T14:22:25.000000+00:00","is_private":false,"listing_date":"2023-05-25T14:22:25.000000+00:00","listing_type":"","maker":{"address":"0xec937a9494a8a9fdda0899b80b234ec8ae10cc4e"},"payment_token":{"address":"0x0000000000000000000000000000000000000000","decimals":18,"eth_price":0,"name":"Ether","Symbol":"ETH","usd_price":"1799.119999999999891000"},"item":{"chain":{"name":"goerli"},"metadata":{"animation_url":"","image_url":"","metadata_url":"https://wonderpals.mypinata.cloud/ipfs/QmSvKdz3ecY3tKT4k7bcMnwPHXRby7tSLfPCngtb1Eq9PQ/97","name":"WonderPal #99"},"nft_id":"goerli/0x424418b6052902cdbdde600450252f681505b04e/60","permalink":"https://testnets.opensea.io/assets/goerli/0x424418b6052902cdbdde600450252f681505b04e/99"},"quantity":1,"taker":""},"sent_at":"2023-05-25T14:22:42.700224+00:00"},"ref":0}`;
+    const str = ` {"topic":"collection:*","event":"item_listed","payload":{"event_type":"item_listed","payload":{"event_timestamp":"2023-05-25T14:22:42.574277+00:00","base_price":"30000000000000000","collection":{"slug":"wonderpalsgoerli"},"expiration_date":"2023-06-25T14:22:25.000000+00:00","is_private":false,"listing_date":"2023-05-25T14:22:25.000000+00:00","listing_type":"","maker":{"address":"0xec937a9494a8a9fdda0899b80b234ec8ae10cc4e"},"payment_token":{"address":"0x0000000000000000000000000000000000000000","decimals":18,"eth_price":0,"name":"Ether","Symbol":"ETH","usd_price":"1799.119999999999891000"},"item":{"chain":{"name":"goerli"},"metadata":{"animation_url":"","image_url":"","metadata_url":"https://wonderpals.mypinata.cloud/ipfs/QmSvKdz3ecY3tKT4k7bcMnwPHXRby7tSLfPCngtb1Eq9PQ/42","name":"WonderPal #99"},"nft_id":"goerli/0x424418b6052902cdbdde600450252f681505b04e/42","permalink":"https://testnets.opensea.io/assets/goerli/0x424418b6052902cdbdde600450252f681505b04e/42"},"quantity":1,"taker":""},"sent_at":"2023-05-25T14:22:42.700224+00:00"},"ref":0}`;
     await handleMessage(str);
 }
 
@@ -76,6 +76,11 @@ const handleMessage = async (str) => {
             order_id: limitOrder.id,
             status: BuyStatus[BuyStatus.RUNNING]
         });
+
+        if (pendingCount > 0) {
+            console.log(`Skip limit order ${limitOrder.id}, have ${pendingCount} pendings`)
+            continue;
+        }
 
         if (pendingCount + limitOrder.purchased >= limitOrder.amount) {
             continue;

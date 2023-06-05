@@ -34,6 +34,10 @@ async function main(): Promise<void> {
             order_id: limitOrder.id,
             status: BuyStatus[BuyStatus.RUNNING]
         });
+        if (pendingCount > 0) {
+            console.log(`Skip limit order ${limitOrder.id}, have ${pendingCount} pendings`)
+            continue;
+        }
 
         if (pendingCount + limitOrder.purchased >= limitOrder.amount) {
             continue;
