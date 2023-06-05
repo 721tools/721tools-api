@@ -211,7 +211,7 @@ OrdersRouter.post('/params', requireLogin, requireWhitelist, async (ctx) => {
       }
       return;
     } else {
-      tokenIds = _.map(items, (item) => item.token_id);
+      tokenIds = _.map(items, (item) => parseInt(item.token_id.toString("hex"), 16).toString());
     }
   }
 
