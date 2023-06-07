@@ -5,4 +5,5 @@ export enum LimitOrderStatus {
     WETH_ALLOWANCE_NOT_ENOUGH,
     FINISHED,
     EXPIRED,
+    CANCELLED,
 }

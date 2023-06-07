@@ -1,7 +1,8 @@
 import Sequelize from 'sequelize';
 import { ethers } from "ethers";
 import _ from 'underscore';
-
+import fs from "fs";
+import path from "path";
 
 import { LimitOrders, User, OpenseaCollections } from "../dal/db";
 import { LimitOrderStatus } from '../model/limit-order-status';
@@ -9,6 +10,10 @@ import { UserType } from '../model/user-type';
 import { parseAddress } from "../helpers/binary_utils";
 
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
+
+const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
+const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
+const j721tool = new ethers.Contract(process.env.CONTRACT_ADDRESS, j721toolsAbi, provider);
 
 
 async function main(): Promise<void> {
@@ -54,6 +59,7 @@ async function main(): Promise<void> {
 
             const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
             if (wethBalance < limitOrder.price * (limitOrder.amount - limitOrder.purchased)) {
+                console.log(`Mark limit order: ${limitOrder.id} as WETH_NOT_ENOUGH`);
                 await limitOrder.update({
                     status: LimitOrderStatus[LimitOrderStatus.WETH_NOT_ENOUGH],
                     error_details: ""
@@ -63,6 +69,7 @@ async function main(): Promise<void> {
 
             const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
             if (wethAllowance < limitOrder.price * (limitOrder.amount - limitOrder.purchased)) {
+                console.log(`Mark limit order: ${limitOrder.id} as WETH_ALLOWANCE_NOT_ENOUGH`);
                 await limitOrder.update({
                     status: LimitOrderStatus[LimitOrderStatus.WETH_ALLOWANCE_NOT_ENOUGH],
                     error_details: ""
@@ -70,6 +77,7 @@ async function main(): Promise<void> {
                 continue;
             }
             if (limitOrder.expiration_time < new Date()) {
+                console.log(`Mark limit order: ${limitOrder.id} as EXPIRED`);
                 await limitOrder.update({
                     status: LimitOrderStatus[LimitOrderStatus.EXPIRED],
                     error_details: ""
@@ -78,12 +86,24 @@ async function main(): Promise<void> {
             }
 
             if (limitOrder.status !== LimitOrderStatus[LimitOrderStatus.RUNNING]) {
+                console.log(`Mark limit order: ${limitOrder.id} as RUNNING`);
                 await limitOrder.update({
                     status: LimitOrderStatus[LimitOrderStatus.RUNNING],
                     error_details: ""
                 });
-            }
+            } else {
+                const nonce = await j721tool.nonces(user.address);
+                if (nonce.toNumber() > limitOrder.nonce) {
+                    console.log(`Mark limit order: ${limitOrder.id} as CANCELLED`);
+                    await limitOrder.update({
+                        status: LimitOrderStatus[LimitOrderStatus.CANCELLED],
+                        error_details: ""
+                    });
+                } else {
 
+                }
+
+            }
             continue
         }
     }
