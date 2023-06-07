@@ -15,6 +15,11 @@ module.exports = class LimitOrders extends Model {
         allowNull: false,
         defaultValue: 0
       },
+      offerer: {
+        type: DataTypes.STRING(64),
+        allowNull: false,
+        defaultValue: ""
+      },
       slug: {
         type: DataTypes.STRING(128),
         allowNull: false,
@@ -57,6 +62,11 @@ module.exports = class LimitOrders extends Model {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0
+      },
+      token: {
+        type: DataTypes.STRING(64),
+        allowNull: false,
+        defaultValue: ""
       },
       salt: {
         type: DataTypes.STRING(128),

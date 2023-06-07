@@ -77,6 +77,7 @@ DROP TABLE IF EXISTS `limit_orders`;
 CREATE TABLE `limit_orders` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL DEFAULT 0,
+  `offerer` varchar(64) NOT NULL DEFAULT '',
   `slug` varchar(128) NOT NULL DEFAULT '', 
   `contract_address` varchar(64) NOT NULL DEFAULT '',
   `amount` int NOT NULL DEFAULT 0,
@@ -86,6 +87,7 @@ CREATE TABLE `limit_orders` (
   `skip_flagged` tinyint NOT NULL DEFAULT 0,
   `token_ids` JSON,
   `nonce` int NOT NULL DEFAULT 0,
+  `token` varchar(64) NOT NULL DEFAULT '',
   `salt` varchar(128) NOT NULL DEFAULT '', 
   `signature` varchar(512) NOT NULL DEFAULT '', 
   `status` varchar(16) NOT NULL DEFAULT '',
