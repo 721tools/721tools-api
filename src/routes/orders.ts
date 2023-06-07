@@ -248,10 +248,10 @@ OrdersRouter.get('/:id/params', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   ctx.body = {
-    offerer: user.address,
+    offerer: limitOrder.offer,
     collection: '0x' + Buffer.from(limitOrder.contract_address, 'binary').toString('hex'),
     nonce: limitOrder.nonce,
-    token: getWethAddress(),
+    token: limitOrder.token,
     amount: limitOrder.amount,
     price: ethers.utils.parseEther(limitOrder.price.toString()).toString(),
     expiresAt: limitOrder.expiration_time.getTime(),
@@ -354,6 +354,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
   const nonce = ctx.request.body['nonce'];
   const salt = ctx.request.body['salt'];
   const signature = ctx.request.body['signature'];
+  const token = getWethAddress();
   const msgParams = JSON.stringify({
     domain: {
       name: 'J721tools',
@@ -365,7 +366,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
       offerer: user.address,
       collection: ethers.utils.getAddress('0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')),
       nonce: nonce,
-      token: getWethAddress(),
+      token: token,
       amount: amount,
       price: ethers.utils.parseEther(price.toString()).toString(),
       expiresAt: expiration,
@@ -410,6 +411,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
 
   await LimitOrders.create({
     user_id: user.id,
+    offer: user.address,
     slug: slug,
     contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
     amount: amount,
@@ -420,6 +422,7 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     traits: ctx.request.body['traits'],
     token_ids: tokenIds,
     nonce: nonce,
+    token: token,
     salt: salt,
     signature: signature,
   });

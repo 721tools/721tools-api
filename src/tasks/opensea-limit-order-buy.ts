@@ -99,7 +99,7 @@ const handleMessage = async (str) => {
         if (user.type !== UserType[UserType.LIFELONG] && user.expiration_time < new Date()) {
             continue;
         }
-        if (ethers.utils.getAddress(user.address) == ethers.utils.getAddress(owner_address)) {
+        if (ethers.utils.getAddress(limitOrder.offer) == ethers.utils.getAddress(owner_address)) {
             continue;
         }
 
@@ -145,12 +145,12 @@ const handleMessage = async (str) => {
 
 
 
-        const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
+        const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, limitOrder.offer)));
         if (wethBalance < price) {
             continue;
         }
 
-        const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
+        const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, limitOrder.offer)));
         if (wethAllowance < price) {
             continue;
         }
