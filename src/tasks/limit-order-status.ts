@@ -10,6 +10,7 @@ import { UserType } from '../model/user-type';
 import { parseAddress } from "../helpers/binary_utils";
 
 import { getContractWethAllowance, getWethBalance } from '../helpers/opensea/erc20_utils';
+import { getWethAddress } from '../helpers/opensea/erc20_utils';
 
 const j721toolsAbi = fs.readFileSync(path.join(__dirname, '../abis/J721Tools.json')).toString();
 const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
@@ -100,9 +101,21 @@ async function main(): Promise<void> {
                         error_details: ""
                     });
                 } else {
-
+                    const encodePacked = ethers.utils.solidityPack(["address", "address", "uint8", "address", "uint8", "uint256", "uint256", "uint256[]", "string"],
+                        [user.address, ethers.utils.getAddress('0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')),
+                        limitOrder.nonce, getWethAddress(), limitOrder.amount,
+                        ethers.utils.parseEther(limitOrder.price.toString()),
+                        limitOrder.expiration_time.getTime(), limitOrder.token_ids, limitOrder.salt]);
+                    const orderHash = ethers.utils.keccak256(encodePacked);
+                    const orderStatus = await j721tool.orderStatuses(orderHash);
+                    if (orderStatus.isCancelled) {
+                        console.log(`Mark limit order: ${limitOrder.id} as CANCELLED`);
+                        await limitOrder.update({
+                            status: LimitOrderStatus[LimitOrderStatus.CANCELLED],
+                            error_details: ""
+                        });
+                    }
                 }
-
             }
             continue
         }

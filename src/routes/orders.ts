@@ -255,7 +255,7 @@ OrdersRouter.get('/:id/params', requireLogin, requireWhitelist, async (ctx) => {
     amount: limitOrder.amount,
     price: ethers.utils.parseEther(limitOrder.price.toString()).toString(),
     expiresAt: limitOrder.expiration_time.getTime(),
-    tokenIds: limitOrder.tokenIds,
+    tokenIds: limitOrder.token_ids,
     salt: limitOrder.salt,
   }
 });
