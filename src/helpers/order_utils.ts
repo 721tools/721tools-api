@@ -222,43 +222,43 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
             for (const openseaToken of openseaLeftTokens) {
                 missingTokens.push(openseaToken.token_id.toString());
             }
-            // const openseaOrders = openseaLeftTokens.length > 0 ? await getOpenseaOrders(openseaLeftTokens, contractAddress) : [];
-            // if (openseaOrders.length == 0) {
-            //     result.success = false;
-            //     result.message = HttpError[HttpError.ORDER_EXPIRED];
-            //     result.missing_tokens = _.map(openseaLeftTokens, (item) => item.token_id.toString());
-            //     return result;
-            // }
-            // const ordersMap = _.groupBy(openseaOrders, function (item) {
-            //     return item.offerIdentifier;
-            // });
-            // for (const openseaToken of openseaLeftTokens) {
-            //     if (!(openseaToken.token_id.toString() in ordersMap)) {
-            //         missingTokens.push(openseaToken.token_id.toString())
-            //         continue;
-            //     }
+            const openseaOrders = openseaLeftTokens.length > 0 ? await getOpenseaOrders(openseaLeftTokens, contractAddress) : [];
+            if (openseaOrders.length == 0) {
+                result.success = false;
+                result.message = HttpError[HttpError.ORDER_EXPIRED];
+                result.missing_tokens = _.map(openseaLeftTokens, (item) => item.token_id.toString());
+                return result;
+            }
+            const ordersMap = _.groupBy(openseaOrders, function (item) {
+                return item.offerIdentifier;
+            });
+            for (const openseaToken of openseaLeftTokens) {
+                if (!(openseaToken.token_id.toString() in ordersMap)) {
+                    missingTokens.push(openseaToken.token_id.toString())
+                    continue;
+                }
 
-            //     const order = ordersMap[openseaToken.token_id.toString()][0];
-            //     const orderAssetContract = order.considerationToken;
-            //     const considerationIdentifier = order.considerationIdentifier;
-            //     if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || considerationIdentifier !== "0") {
-            //         missingTokens.push(openseaToken.token_id.toString());
-            //         continue;
-            //     }
-            //     let currentPrice = BigNumber.from(order.considerationAmount);
-            //     for (const additionalRecipient of order.additionalRecipients) {
-            //         currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
-            //     }
-            //     if (currentPrice.gt(ethers.utils.parseEther(openseaToken.price.toString()))) {
-            //         missingTokens.push(openseaToken.token_id.toString());
-            //         continue;
-            //     }
+                const order = ordersMap[openseaToken.token_id.toString()][0];
+                const orderAssetContract = order.considerationToken;
+                const considerationIdentifier = order.considerationIdentifier;
+                if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || considerationIdentifier !== "0") {
+                    missingTokens.push(openseaToken.token_id.toString());
+                    continue;
+                }
+                let currentPrice = BigNumber.from(order.considerationAmount);
+                for (const additionalRecipient of order.additionalRecipients) {
+                    currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
+                }
+                if (currentPrice.gt(ethers.utils.parseEther(openseaToken.price.toString()))) {
+                    missingTokens.push(openseaToken.token_id.toString());
+                    continue;
+                }
 
-            //     orders.seaport.remote.push(order);
-            // }
+                orders.seaport.remote.push(order);
+            }
         }
-
     }
+    console.log(orders);
     if (missingTokens.length > 0) {
         result.success = false;
         result.message = HttpError[HttpError.ORDER_EXPIRED];
@@ -276,17 +276,19 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
             result.value = result.value.add(order.price);
         }
     }
-    // if (orders.seaport.remote.length > 0) {
-    //     for (const order of orders.seaport.remote) {
-    //         const calldata = seaportProxyIface.encodeFunctionData("buyAssetsForEth", [[order]]);
-    //         let currentPrice = BigNumber.from(order.considerationAmount);
-    //         for (const additionalRecipient of order.additionalRecipients) {
-    //             currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
-    //         }
-    //         tradeDetails.push({ marketId: 10, value: currentPrice, tradeData: calldata });
-    //         result.value = result.value.add(currentPrice);
-    //     }
-    // }
+    if (orders.seaport.remote.length > 0) {
+        for (const order of orders.seaport.remote) {
+            console.log(order)
+            // const calldata = seaportProxyIface.encodeFunctionData("buyAssetsForEth", [[order]]);
+            // let currentPrice = BigNumber.from(order.considerationAmount);
+            // for (const additionalRecipient of order.additionalRecipients) {
+            //     currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
+            // }
+            // tradeDetails.push({ marketId: order.platform, value: order.price, tradeData: calldata });
+            // tradeDetails.push({ marketId: 10, value: currentPrice, tradeData: calldata });
+            // result.value = result.value.add(currentPrice);
+        }
+    }
     if (l2ChainAddress) {
         const crossChainFee = await estimateFees(process.env.X_CONTRACT_ADDRESS, ethers.utils.solidityPack(
             ["uint16", "address", "address", "uint256", "address"],

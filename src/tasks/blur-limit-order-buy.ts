@@ -31,8 +31,10 @@ async function main(): Promise<void> {
     });
     for (const limitOrder of limitOrders) {
         const pendingCount = await OrderBuyLogs.count({
-            order_id: limitOrder.id,
-            status: BuyStatus[BuyStatus.RUNNING]
+            where: {
+                order_id: limitOrder.id,
+                status: BuyStatus[BuyStatus.RUNNING]
+            }
         });
         if (pendingCount > 0) {
             console.log(`Skip limit order ${limitOrder.id}, have ${pendingCount} pendings`)

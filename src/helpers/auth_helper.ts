@@ -86,7 +86,9 @@ export const requireMember = async (ctx, next) => {
 
 export const addressIsWhitelist = async (address) => {
     const count = await Whitelist.count({
-        address: address
+        where: {
+            address: address
+        }
     });
     return count > 0;
 }
