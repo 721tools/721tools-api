@@ -248,7 +248,7 @@ OrdersRouter.get('/:id/params', requireLogin, requireWhitelist, async (ctx) => {
   }
 
   ctx.body = {
-    offerer: limitOrder.offer,
+    offerer: limitOrder.offerer,
     collection: '0x' + Buffer.from(limitOrder.contract_address, 'binary').toString('hex'),
     nonce: limitOrder.nonce,
     token: limitOrder.token,
@@ -347,7 +347,6 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     return;
   }
 
-
   const expirationTime = new Date(expiration);
   const skipFlagged = ctx.request.body['skip_flagged'];
   const tokenIds = ctx.request.body['tokenIds'];
@@ -408,10 +407,9 @@ OrdersRouter.post('/', requireLogin, requireWhitelist, async (ctx) => {
     }
     return;
   }
-
   await LimitOrders.create({
     user_id: user.id,
-    offer: user.address,
+    offerer: user.address,
     slug: slug,
     contract_address: '0x' + Buffer.from(collection.contract_address, 'binary').toString('hex'),
     amount: amount,

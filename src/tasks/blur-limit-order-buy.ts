@@ -102,7 +102,7 @@ async function main(): Promise<void> {
                 [Sequelize.Op.gt]: new Date()
             },
             owner_address: {
-                [Sequelize.Op.ne]: parseAddress(limitOrder.offer)
+                [Sequelize.Op.ne]: parseAddress(limitOrder.offerer)
             }
         };
 
@@ -125,12 +125,12 @@ async function main(): Promise<void> {
 
 
         const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
-        const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, limitOrder.offer)));
+        const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, limitOrder.offerer)));
         if (wethBalance < limitOrder.price) {
             continue;
         }
 
-        const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, limitOrder.offer)));
+        const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, limitOrder.offerer)));
         if (wethAllowance < limitOrder.price) {
             continue;
         }

@@ -102,7 +102,7 @@ async function main(): Promise<void> {
                     });
                 } else {
                     const encodePacked = ethers.utils.solidityPack(["address", "address", "uint8", "address", "uint8", "uint256", "uint256", "uint256[]", "string"],
-                        [limitOrder.offer, ethers.utils.getAddress('0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')),
+                        [limitOrder.offerer, ethers.utils.getAddress('0x' + Buffer.from(collection.contract_address, 'binary').toString('hex')),
                         limitOrder.nonce, limitOrder.token, limitOrder.amount,
                         ethers.utils.parseEther(limitOrder.price.toString()),
                         limitOrder.expiration_time.getTime(), limitOrder.token_ids, limitOrder.salt]);

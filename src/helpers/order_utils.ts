@@ -99,7 +99,6 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
         return result;
     }
     const tradeDetails = [];
-
     const blurTokens = tokens.filter(token => token.platform == Flatform.BLUR);
     if (blurTokens.length > 0) {
         if (!blurAuthToken) {
