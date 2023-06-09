@@ -21,7 +21,6 @@ async function main(): Promise<void> {
     const sub = redis.duplicate();
     await sub.connect();
     await sub.subscribe("OPENSEA-ETH-ORDER-LISTING", async (str) => {
-        console.log(str);
         await handleMessage(str);
     });
 }

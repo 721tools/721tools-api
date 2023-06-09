@@ -4,8 +4,9 @@ import _ from 'underscore';
 import fs from "fs";
 import path from "path";
 
-import { LimitOrders, User, OpenseaCollections } from "../dal/db";
+import { LimitOrders, User, OpenseaCollections, OrderBuyLogs } from "../dal/db";
 import { LimitOrderStatus } from '../model/limit-order-status';
+import { BuyStatus } from '../model/buy-status';
 import { UserType } from '../model/user-type';
 import { parseAddress } from "../helpers/binary_utils";
 
@@ -58,8 +59,15 @@ async function main(): Promise<void> {
 
             const provider = new ethers.providers.JsonRpcProvider(process.env.NETWORK === 'goerli' ? process.env.GOERLI_RPC_URL : process.env.ETH_RPC_URL);
 
+            const pendingCount = await OrderBuyLogs.count({
+                where: {
+                    order_id: limitOrder.id,
+                    status: BuyStatus[BuyStatus.RUNNING]
+                }
+            });
+
             const wethBalance = parseFloat(ethers.utils.formatEther(await getWethBalance(provider, user.address)));
-            if (wethBalance < limitOrder.price * (limitOrder.amount - limitOrder.purchased)) {
+            if (wethBalance < limitOrder.price * (limitOrder.amount - limitOrder.purchased - pendingCount)) {
                 console.log(`Mark limit order: ${limitOrder.id} as WETH_NOT_ENOUGH`);
                 await limitOrder.update({
                     status: LimitOrderStatus[LimitOrderStatus.WETH_NOT_ENOUGH],
@@ -67,9 +75,9 @@ async function main(): Promise<void> {
                 });
                 continue;
             }
-
             const wethAllowance = parseFloat(ethers.utils.formatEther(await getContractWethAllowance(provider, process.env.CONTRACT_ADDRESS, user.address)));
-            if (wethAllowance < limitOrder.price * (limitOrder.amount - limitOrder.purchased)) {
+
+            if (wethAllowance < limitOrder.price * (limitOrder.amount - limitOrder.purchased - pendingCount)) {
                 console.log(`Mark limit order: ${limitOrder.id} as WETH_ALLOWANCE_NOT_ENOUGH`);
                 await limitOrder.update({
                     status: LimitOrderStatus[LimitOrderStatus.WETH_ALLOWANCE_NOT_ENOUGH],
