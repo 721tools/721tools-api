@@ -71,7 +71,10 @@ export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
             if (!params) {
                 return [];
             }
-            result.push(params);
+            result.push({
+                protocol_address: order.protocol_address,
+                order: params
+            });
         }
         return result;
     }
@@ -218,9 +221,6 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
         }
 
         if (openseaLeftTokens.length > 0) {
-            for (const openseaToken of openseaLeftTokens) {
-                missingTokens.push(openseaToken.token_id.toString());
-            }
             const openseaOrders = openseaLeftTokens.length > 0 ? await getOpenseaOrders(openseaLeftTokens, contractAddress) : [];
             if (openseaOrders.length == 0) {
                 result.success = false;
@@ -229,7 +229,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
                 return result;
             }
             const ordersMap = _.groupBy(openseaOrders, function (item) {
-                return item.offerIdentifier;
+                return item.order.offerIdentifier;
             });
             for (const openseaToken of openseaLeftTokens) {
                 if (!(openseaToken.token_id.toString() in ordersMap)) {
@@ -237,7 +237,7 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
                     continue;
                 }
 
-                const order = ordersMap[openseaToken.token_id.toString()][0];
+                const order = ordersMap[openseaToken.token_id.toString()][0].order;
                 const orderAssetContract = order.considerationToken;
                 const considerationIdentifier = order.considerationIdentifier;
                 if (orderAssetContract !== "0x0000000000000000000000000000000000000000" || considerationIdentifier !== "0") {
@@ -253,11 +253,27 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
                     continue;
                 }
 
-                orders.seaport.remote.push(order);
+                orders.seaport.remote.push({
+                    protocol_address: ordersMap[openseaToken.token_id.toString()][0].protocol_address,
+                    order: order
+                });
+
+                for (const index in openseaLeftTokens) {
+                    if (openseaLeftTokens[index].token_id.toString() == openseaToken.token_id.toString()) {
+                        openseaLeftTokens.splice(index);
+                    }
+                }
+            }
+        }
+
+        if (openseaLeftTokens.length > 0) {
+            for (const openseaToken of openseaLeftTokens) {
+                missingTokens.push(openseaToken.token_id.toString());
             }
         }
     }
-    console.log(orders);
+
+
     if (missingTokens.length > 0) {
         result.success = false;
         result.message = HttpError[HttpError.ORDER_EXPIRED];
@@ -276,16 +292,23 @@ export const getCalldata = async (tokens, contractAddress, userAddress, l2ChainA
         }
     }
     if (orders.seaport.remote.length > 0) {
-        for (const order of orders.seaport.remote) {
-            console.log(order)
-            // const calldata = seaportProxyIface.encodeFunctionData("buyAssetsForEth", [[order]]);
-            // let currentPrice = BigNumber.from(order.considerationAmount);
-            // for (const additionalRecipient of order.additionalRecipients) {
-            //     currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
-            // }
-            // tradeDetails.push({ marketId: order.platform, value: order.price, tradeData: calldata });
-            // tradeDetails.push({ marketId: 10, value: currentPrice, tradeData: calldata });
-            // result.value = result.value.add(currentPrice);
+        for (const orderAndProtocal of orders.seaport.remote) {
+            const order = orderAndProtocal.order;
+            const calldata = seaportProxyIface.encodeFunctionData("buyAssetsForEth", [[order]]);
+            let currentPrice = BigNumber.from(order.considerationAmount);
+            for (const additionalRecipient of order.additionalRecipients) {
+                currentPrice = currentPrice.add(BigNumber.from(additionalRecipient.amount));
+            }
+            const protocol_address = ethers.utils.getAddress(orderAndProtocal.protocol_address);
+            const platform = getPlatform(protocol_address, process.env.NETWORK, l2ChainAddress);
+            if (platform == 0) {
+                missingTokens.push(order.offerIdentifier)
+                result.success = false;
+                result.message = HttpError[HttpError.PROTOCAL_NOT_SUPPORTED];
+                return result;
+            }
+            tradeDetails.push({ marketId: platform, value: currentPrice, tradeData: calldata });
+            result.value = result.value.add(currentPrice);
         }
     }
     if (l2ChainAddress) {
@@ -327,6 +350,9 @@ export const getFillOrderCalldata = async (limitOrder, address, tokenId) => {
 
 
 export const getBasicOrderParametersFromOrder = async (order, openseaKey) => {
+    if (process.env.NETWORK === 'goerli') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     const request = {
         listing: {
             hash: order.order_hash,
