@@ -1,6 +1,7 @@
 import { gotScraping } from 'got-scraping';
 import { BigNumber, ethers, utils } from "ethers";
 import _ from 'lodash';
+import { FlashbotsBundleProvider, FlashbotsBundleResolution } from '@flashbots/ethers-provider-bundle';
 import fs from "fs";
 import path from "path";
 import Sequelize from 'sequelize';
@@ -30,7 +31,6 @@ const seaportAbi = [
     'function fulfillBasicOrder(tuple(address considerationToken, uint256 considerationIdentifier, uint256 considerationAmount, address offerer, address zone, address offerToken, uint256 offerIdentifier, uint256 offerAmount, uint8 basicOrderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 offererConduitKey, bytes32 fulfillerConduitKey, uint256 totalOriginalAdditionalRecipients, tuple(uint256 amount, address recipient)[] additionalRecipients, bytes signature) parameters) payable returns (bool fulfilled)',
 ]
 const seaportIface = new ethers.utils.Interface(seaportAbi);
-
 
 export const getOpenseaOrders = async (openseaTokens, contractAddress) => {
     let url = `https://${process.env.NETWORK === 'goerli' ? "testnets-" : ""}api.opensea.io/v2/orders/${process.env.NETWORK === 'goerli' ? "goerli" : "ethereum"}/seaport/listings?asset_contract_address=${contractAddress}&limit=50&order_by=eth_price&order_direction=asc&format=json`;
@@ -452,24 +452,80 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
     // 3: fillOrder
     // 4: Unwrap WETH
     // 5: Transfer ETH Back
-    const contract = new ethers.Contract(process.env.MULTICALL_CONTRACT_ADDRESS, multicall3Abi, signer);
 
-    try {
-        const tx = await contract.aggregate3Value(calls, { value: callDataResult.value });
-        for (const token of tokens) {
-            await OrderBuyLogs.create({
-                user_id: user.id,
-                contract_address: contractAddress,
-                order_id: limitOrder.id,
-                tx: tx.hash,
-                price: token.price,
-                token_id: token.token_id,
-                status: BuyStatus[BuyStatus.RUNNING],
-            });
-        }
-        console.log(`Address ${signer.address} buy limit order ${limitOrder.id} success with tx ${tx.hash}`)
-    } catch (error) {
-        console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed`, error)
+    const flashbotsProvider = await FlashbotsBundleProvider.create(provider, signer,
+        process.env.NETWORK === 'goerli' ? "https://relay-goerli.flashbots.net" : "https://relay.flashbots.net"
+    );
+
+    const contract = new ethers.Contract(process.env.MULTICALL_CONTRACT_ADDRESS, multicall3Abi, signer);
+    const transaction = await contract.populateTransaction.aggregate3Value(calls, {
+        value: callDataResult.value
+    })
+
+    // try {
+    // const tx = await contract.aggregate3Value(calls, { value: callDataResult.value });
+    // } catch (error) {
+    //     console.error(`Address ${signer.address} buy limit order ${limitOrder.id} failed`, error)
+    // }
+
+    // console.log(`Address ${signer.address} buy limit order ${limitOrder.id} success with tx ${tx.hash}`)
+
+    transaction.chainId = process.env.NETWORK === 'goerli' ? 5 : 1;
+    const baseFee = (await provider.getBlock("latest")).baseFeePerGas as BigNumber;
+    transaction.gasPrice = baseFee.mul(11).div(10);
+    const signedTransactions = await flashbotsProvider.signBundle([{
+        transaction,
+        signer: signer
+    }]);
+    const currentBlockNumber = await provider.getBlockNumber();
+    const BLOCKS_IN_FUTURE = 1;
+    const targetBlockNumber = currentBlockNumber + BLOCKS_IN_FUTURE;
+
+    const simulation = await flashbotsProvider.simulate(
+        signedTransactions,
+        targetBlockNumber
+    );
+
+    // 检查模拟是否成功
+    if ("error" in simulation) {
+        console.log(`Address ${signer.address} buy limit order ${limitOrder.id} error, flashbots error: ${simulation.error.message}`);
+        return;
     }
+    g
+    const TRY_BLOCKS = 15;
+    for (let i = 0; i <= TRY_BLOCKS; i++) {
+        const blockNumber = targetBlockNumber + i;
+        const bundleResponse = await flashbotsProvider.sendRawBundle(signedTransactions, blockNumber);
+        if ('error' in bundleResponse) {
+            console.log(`Address ${signer.address} buy limit order ${limitOrder.id} error, flashbots error: ${bundleResponse.error.message}`)
+            return;
+        }
+        const bundleResolution = await bundleResponse.wait();
+        if (bundleResolution === FlashbotsBundleResolution.BundleIncluded) {
+            const tx = simulation.results[0].txHash;
+            for (const token of tokens) {
+                await OrderBuyLogs.create({
+                    user_id: user.id,
+                    contract_address: contractAddress,
+                    order_id: limitOrder.id,
+                    tx: tx,
+                    price: token.price,
+                    token_id: token.token_id,
+                    status: BuyStatus[BuyStatus.RUNNING],
+                });
+            }
+            console.log(`Address ${signer.address} buy limit order ${limitOrder.id} success with tx ${tx}`)
+            return;
+        } else if (bundleResolution === FlashbotsBundleResolution.BlockPassedWithoutInclusion) {
+            console.log(`Not included in ${blockNumber}`);
+            // console.log(`Address ${signer.address} buy limit order ${limitOrder.id} error, flashbots error: Not included in ${targetBlockNumber}`);
+        } else if (bundleResolution === FlashbotsBundleResolution.AccountNonceTooHigh) {
+            console.log(`Address ${signer.address} buy limit order ${limitOrder.id} error, flashbots error: Nonce too high, bailing`)
+            return;
+        }
+    }
+
+    console.log(`Address ${signer.address} buy limit order ${limitOrder.id} failed, not included by flashbots`)
+
 
 };
