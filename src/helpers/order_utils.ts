@@ -491,7 +491,7 @@ export const buy = async (provider, user, limitOrder, contractAddress, tokens, b
         console.log(`Address ${signer.address} buy limit order ${limitOrder.id} error, flashbots error: ${simulation.error.message}`);
         return;
     }
-    g
+
     const TRY_BLOCKS = 15;
     for (let i = 0; i <= TRY_BLOCKS; i++) {
         const blockNumber = targetBlockNumber + i;
